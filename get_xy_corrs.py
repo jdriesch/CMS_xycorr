@@ -2,6 +2,7 @@ import ROOT
 import argparse
 import numpy as np
 import json
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--hists", action='store_true', default=False)
@@ -13,7 +14,10 @@ parser.add_argument("--corr", action='store_true', default=False)
 # (str) rfile: name of root file with histograms
 # (dict) hbins: names of npv and met with histogram bins
 def makehists(fdict, rfile, hbins):
-    
+
+    # create path to root output file and create file
+    path = rfile.replace(rfile.split('/')[-1], '')
+    os.makedirs(path, exist_ok=True)
     rfile = ROOT.TFile(rfile, "RECREATE")
 
     met, npv = hbins.keys()
@@ -57,13 +61,12 @@ def makehists(fdict, rfile, hbins):
     return
 
 
-def get_corrections(rfile, hbins, corr_file):
+def get_corrections(fdict, rfile, hbins, corr_file):
 
     met, npv = hbins.keys()
 
-
     corr_dict = {}
-    for dtmc in ['data', 'mc']:
+    for dtmc in fdict.keys():
         for xy in ['_x', '_y']:
 
             # read histograms from root file
@@ -147,6 +150,9 @@ def plot_2dim(
         prof.Draw("same")
         line.Draw("same")
     
+    path = outfile.replace(outfile.split('/')[-1], '')
+    os.makedirs(path, exist_ok=True)
+
     c.SaveAs(outfile+'.pdf')    
     c.SaveAs(outfile+'.png')
 
@@ -184,5 +190,5 @@ if __name__=='__main__':
         makehists(fdict, hists, hbins)
 
     if args.corr:
-        get_corrections(hists, hbins, corr_file)
+        get_corrections(fdict, hists, hbins, corr_file)
 
