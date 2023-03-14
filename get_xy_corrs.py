@@ -9,7 +9,7 @@ parser.add_argument("--hists", action='store_true', default=False)
 parser.add_argument("--corr", action='store_true', default=False)
 
 
-# function to make 2d histograms
+# function to make 2d histograms for xy correction
 # (dict) fdict: dictionary with mc and data root files
 # (str) rfile: name of root file with histograms
 # (dict) hbins: names of npv and met with histogram bins
@@ -32,9 +32,6 @@ def makehists(fdict, rfile, hbins):
 
         rdf = ROOT.RDataFrame(chain)
 
-        #for n in rdf.GetColumnNames():
-        #    print(n)
-        
         # definition of x and y component of met
         rdf = rdf.Define(f"{met}_x", f"{met}_pt*cos({met}_phi)")
         rdf = rdf.Define(f"{met}_y", f"{met}_pt*sin({met}_phi)")
@@ -60,7 +57,11 @@ def makehists(fdict, rfile, hbins):
 
     return
 
-
+# function to get xy corrections and plot results
+# (dict) fdict: dictionary with mc and data root files
+# (str) rfile: name of root file with histograms
+# (dict) hbins: names of npv and met with histogram bins
+# (str) corr_file: name of correction file
 def get_corrections(fdict, rfile, hbins, corr_file):
 
     met, npv = hbins.keys()
@@ -182,7 +183,6 @@ if __name__=='__main__':
 
     hbins = {
         'MET': [-200, 200, 200],
-        #'Pileup_nPU': [0, 100, 100],
         'PV_npvsGood': [0, 100, 100]
     }
     
