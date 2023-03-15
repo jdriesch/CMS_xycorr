@@ -9,11 +9,65 @@ parser.add_argument("--hists", action='store_true', default=False)
 parser.add_argument("--corr", action='store_true', default=False)
 
 
-# function to make 2d histograms for xy correction
-# (dict) fdict: dictionary with mc and data root files
-# (str) rfile: name of root file with histograms
-# (dict) hbins: names of npv and met with histogram bins
-def makehists(fdict, rfile, hbins):
+def filter_lumi(rdf, golden_json):
+    """
+    function to get rdf with events filtered with golden json
+    
+    (ROOT.RDataFrame) rdf: dataframe
+    (str) golden_json: path to golden json
+    
+    """
+
+    # load content of golden json
+    with open(golden_json) as cf:
+        goldenruns = json.load(cf)
+
+    # extract runs and lumi sections to lists
+    runs = [r for r in goldenruns.keys()]
+    lumlist = [goldenruns[r] for r in goldenruns.keys()]
+
+    # make c++ vectors of runlist and lumilist for dataframe
+    runstr = "{" + ",".join(runs) + "}"
+    lumstr = str(lumlist).replace("[", "{").replace("]", "}")
+
+    # define quantity isGolden that is true iff it matches the lumi criteria
+    rdf = rdf.Define(
+        "isGolden",
+        f"std::vector<int> runs = {runstr};"\
+        f"std::vector<std::vector<std::vector<int>>> lums = {lumstr};"\
+        """
+            int index = -1;
+            auto runidx = std::find(runs.begin(), runs.end(), run);
+            if (runidx != runs.end()){
+                index = runidx - runs.begin();
+            }
+
+            if (index == -1) {
+                return 0;
+            }
+
+            int lumsecs = lums[index].size();
+            for (int i=0; i<lumsecs; i++) {
+                if (luminosityBlock >= lums[index][i][0] && luminosityBlock <= lums[index][i][1]){
+                    return 1;
+                }
+            }
+
+            return 0;
+            
+        """
+    )
+    return rdf.Filter("isGolden==1")
+
+
+def makehists(fdict, rfile, hbins, golden_json):
+    """
+    function to make 2d histograms for xy correction
+
+    (dict) fdict: dictionary with mc and data root files
+    (str) rfile: name of root file with histograms
+    (dict) hbins: names of npv and met with histogram bins
+    """
 
     # create path to root output file and create file
     path = rfile.replace(rfile.split('/')[-1], '')
@@ -31,6 +85,10 @@ def makehists(fdict, rfile, hbins):
             chain.Add(f)
 
         rdf = ROOT.RDataFrame(chain)
+
+        if dtmc == 'data':
+            rdf = filter_lumi(rdf, golden_json)
+            print("data filtered using golden lumi json: ", golden_json)
 
         # definition of x and y component of met
         rdf = rdf.Define(f"{met}_x", f"{met}_pt*cos({met}_phi)")
@@ -57,12 +115,16 @@ def makehists(fdict, rfile, hbins):
 
     return
 
-# function to get xy corrections and plot results
-# (dict) fdict: dictionary with mc and data root files
-# (str) rfile: name of root file with histograms
-# (dict) hbins: names of npv and met with histogram bins
-# (str) corr_file: name of correction file
+
 def get_corrections(fdict, rfile, hbins, corr_file):
+    """
+    function to get xy corrections and plot results
+
+    (dict) fdict: dictionary with mc and data root files
+    (str) rfile: name of root file with histograms
+    (dict) hbins: names of npv and met with histogram bins
+    (str) corr_file: name of correction file
+    """
 
     met, npv = hbins.keys()
 
@@ -164,6 +226,7 @@ if __name__=='__main__':
     args = parser.parse_args()
     hists = 'hists/hists.root'    
     corr_file = 'corr.json'
+    golden_json = 'Cert_Collisions2022_eraC_355862_357482_Golden.json'
 
     rootlib = "root://xrootd-cms.infn.it//"
     path_data = "/store/data/Run2022C/Muon/NANOAOD/PromptNanoAODv10_v1-v1/2520000/"
@@ -187,7 +250,7 @@ if __name__=='__main__':
     }
     
     if args.hists:
-        makehists(fdict, hists, hbins)
+        makehists(fdict, hists, hbins, golden_json)
 
     if args.corr:
         get_corrections(fdict, hists, hbins, corr_file)
