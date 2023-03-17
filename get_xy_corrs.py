@@ -1,12 +1,45 @@
 import ROOT
 import argparse
-import numpy as np
+import yaml
 import json
 import os
+from tqdm  import tqdm
+import tools.plot as plot
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--hists", action='store_true', default=False)
-parser.add_argument("--corr", action='store_true', default=False)
+parser.add_argument(
+    "-H", 
+    "--hists", 
+    action='store_true', 
+    default=False,
+    help='set to make 2d met vs npv histograms'
+    )
+parser.add_argument(
+    "-C", 
+    "--corr", 
+    action='store_true', 
+    default=False,
+    help='set to get XY corrections'
+    )
+parser.add_argument(
+    "-D", 
+    "--datasets", 
+    help="path to datasets; default is configs/datasets.yaml", 
+    default='configs/datasets.yaml'
+    )
+parser.add_argument(
+    "-S", 
+    "--snapshot", 
+    action='store_true', 
+    default=False, 
+    help="set if snapshot of data should be saved (for validation)"
+    )
+parser.add_argument(
+    "-M",
+    "--met",
+    help="MET type; default is 'MET'",
+    default='MET'
+)
 
 
 def filter_lumi(rdf, golden_json):
@@ -15,7 +48,6 @@ def filter_lumi(rdf, golden_json):
     
     (ROOT.RDataFrame) rdf: dataframe
     (str) golden_json: path to golden json
-    
     """
 
     # load content of golden json
@@ -54,52 +86,55 @@ def filter_lumi(rdf, golden_json):
             }
 
             return 0;
-            
         """
     )
     return rdf.Filter("isGolden==1")
 
-
-def makehists(fdict, rfile, hbins, golden_json):
+def makehists(infiles, hfile, hbins, golden_json, isdata, snap):
     """
     function to make 2d histograms for xy correction
 
-    (dict) fdict: dictionary with mc and data root files
-    (str) rfile: name of root file with histograms
+    (list) infiles: list with event root files
+    (str) hfile: name of output root file with histograms
     (dict) hbins: names of npv and met with histogram bins
+    (str) golden_json: path to golden json
+    (bool) isdata: True if data
+    (str) snap: path to snapshot if snapshot should be stored; else: False
     """
 
     # create path to root output file and create file
-    path = rfile.replace(rfile.split('/')[-1], '')
+    path = hfile.replace(hfile.split('/')[-1], '')
     os.makedirs(path, exist_ok=True)
-    rfile = ROOT.TFile(rfile, "RECREATE")
+    hfile = ROOT.TFile(hfile, "RECREATE")
 
     met, npv = hbins.keys()
+    
+    hists = {met+"_x": False, met+"_y": False}
 
-    # loop over data and mc
-    for dtmc in fdict.keys():
+    for f in tqdm(infiles):
+        rdf = ROOT.RDataFrame("Events", f)
 
-        # prepare chain and create rdf
-        chain = ROOT.TChain("Events")
-        for f in fdict[dtmc]:
-            chain.Add(f)
 
-        rdf = ROOT.RDataFrame(chain)
-
-        if dtmc == 'data':
+        if isdata:
             rdf = filter_lumi(rdf, golden_json)
-            print("data filtered using golden lumi json: ", golden_json)
+            # print("data filtered using golden lumi json: ", golden_json)
 
         # definition of x and y component of met
         rdf = rdf.Define(f"{met}_x", f"{met}_pt*cos({met}_phi)")
         rdf = rdf.Define(f"{met}_y", f"{met}_pt*sin({met}_phi)")
-        
+
+        if snap:
+            spath = f"{snap}{met}_{infiles.index(f)}.root"
+            os.makedirs(snap, exist_ok=True)
+            quants = [f'{met}_x', f'{met}_y', npv]
+            rdf.Snapshot("Events", spath, quants)
+
         # definition of 2d histograms met_xy vs npv
-        for xy in ["_x", "_y"]:
+        for var in hists.keys():
             h = rdf.Histo2D(
                 (
-                    dtmc+met+xy, 
-                    met+xy, 
+                    var, 
+                    var, 
                     hbins[npv][2], 
                     hbins[npv][0], 
                     hbins[npv][1], 
@@ -107,151 +142,122 @@ def makehists(fdict, rfile, hbins, golden_json):
                     hbins[met][0], 
                     hbins[met][1]
                 ),
-                npv, met+xy,
+                npv, var
             )
-            h.Write()
 
-    rfile.Close()
+            if hists[var]:
+                hists[var].Add(h.GetPtr())
+            else:
+                hists[var]=h
+        
+        for var in hists.keys():
+            hists[var].Write()
+
+    hfile.Close()
 
     return
 
 
-def get_corrections(fdict, rfile, hbins, corr_file):
+def get_corrections(hfile, hbins, corr_file, tag, plots):
     """
     function to get xy corrections and plot results
 
-    (dict) fdict: dictionary with mc and data root files
-    (str) rfile: name of root file with histograms
+    (str) hfile: name of root file with histograms
     (dict) hbins: names of npv and met with histogram bins
     (str) corr_file: name of correction file
+    (bool) isdata: True or False
+    (str) plots: path to plots
     """
 
     met, npv = hbins.keys()
 
     corr_dict = {}
-    for dtmc in fdict.keys():
-        for xy in ['_x', '_y']:
+    for xy in ['_x', '_y']:
 
-            # read histograms from root file
-            tf = ROOT.TFile(rfile, "READ")
-            h = tf.Get(dtmc+met+xy)
-            h.SetDirectory(ROOT.nullptr)
-            tf.Close()
+        # read histograms from root file
+        tf = ROOT.TFile(hfile, "READ")
+        h = tf.Get(met+xy)
+        h.SetDirectory(ROOT.nullptr)
+        tf.Close()
 
-            # define and fit pol1 function
-            f1 = ROOT.TF1("pol1", "[0]*x+[1]", -10, 110)
-            h.Fit(f1, "R", "", 0, 100)
+        # define and fit pol1 function
+        f1 = ROOT.TF1("pol1", "[0]*x+[1]", -10, 110)
+        h.Fit(f1, "R", "", 0, 100)
 
-            # save fit parameter
-            corr_dict[dtmc+xy] = {
-                "m": f1.GetParameter(0),
-                "c": f1.GetParameter(1)
-            }
+        # save fit parameter
+        corr_dict[xy] = {
+            "m": f1.GetParameter(0),
+            "c": f1.GetParameter(1)
+        }
 
-            # plot fit results
-            plot_2dim(
-                h,
-                title=dtmc,
-                axis=['NPV', f'{met}{xy} (GeV)'],
-                outfile=f"plots/{dtmc+xy}",
-                xrange=[0,100],
-                yrange=[hbins[met][0], hbins[met][1]],
-                lumi='2022, 13.6 TeV',
-                line=f1,
-            )
+        # plot fit results
+        plot.plot_2dim(
+            h,
+            title=tag,
+            axis=['NPV', f'{met}{xy} (GeV)'],
+            outfile=f"{plots}{met+xy}",
+            xrange=[0,100],
+            yrange=[hbins[met][0], hbins[met][1]],
+            lumi='2022, 13.6 TeV',
+            line=f1,
+            results=[round(corr_dict[xy]["m"],3), round(corr_dict[xy]["c"],3)]
+        )
 
-    with open(corr_file, "w") as f:
-        json.dump(corr_dict, f)
+    os.makedirs(corr_file, exist_ok=True)
+    with open(f"{corr_file}{met}.yaml", "w") as f:
+        yaml.dump(corr_dict, f)
             
-    return
-    
-
-def plot_2dim(
-        h,
-        title="",
-        axis=["",""],
-        outfile="dummy.pdf",
-        xrange = [0,100],
-        yrange = [-100,100],
-        lumi = '2022, 13.6 TeV',
-        drawoption='COLZ',
-        line = False,
-    ):
-    c = ROOT.TCanvas("c", title, 800, 700)
-    ROOT.gROOT.SetBatch(1)
-    ROOT.gPad.SetGrid()
-    
-    h.SetStats(0)
-    h.GetXaxis().SetRangeUser(xrange[0], xrange[1])
-    h.GetYaxis().SetRangeUser(yrange[0], yrange[1])
-
-    h.GetXaxis().SetLabelSize(0.03)
-    #h.GetXaxis().SetTitleOffset(0.1)
-    h.GetXaxis().SetTitleSize(0.03)
-    h.GetXaxis().SetTitle(axis[0])
-
-    h.GetYaxis().SetLabelSize(0.03)
-    h.GetYaxis().SetTitle(axis[1])
-    h.GetYaxis().SetTitleOffset(1.2)
-    h.GetYaxis().SetTitleSize(0.03)
-
-    h.Draw(drawoption)
-    h.SetTitle(title)
-
-    cmsTex=ROOT.TLatex()
-    cmsTex.SetTextFont(42)
-    cmsTex.SetTextSize(0.025)
-    cmsTex.SetNDC()
-    cmsTex.SetTextSize(0.035)
-    cmsTex.DrawLatex(0.11,0.915,'#bf{CMS} #it{Preliminary}')
-    cmsTex.DrawLatex(0.60, 0.915, lumi)
-
-    if line:
-        prof = h.ProfileX("prof", 0, 200)
-        prof.SetLineWidth(2)
-        prof.SetLineColor(ROOT.kBlack)
-        prof.Draw("same")
-        line.Draw("same")
-    
-    path = outfile.replace(outfile.split('/')[-1], '')
-    os.makedirs(path, exist_ok=True)
-
-    c.SaveAs(outfile+'.pdf')    
-    c.SaveAs(outfile+'.png')
-
     return
 
 
 if __name__=='__main__':
     args = parser.parse_args()
-    hists = 'hists/hists.root'    
-    corr_file = 'corr.json'
-    golden_json = 'Cert_Collisions2022_eraC_355862_357482_Golden.json'
+    datasets = args.datasets
+    met = args.met
 
-    rootlib = "root://xrootd-cms.infn.it//"
-    path_data = "/store/data/Run2022C/Muon/NANOAOD/PromptNanoAODv10_v1-v1/2520000/"
-    path_mc = "/store/mc/Run3Summer22NanoAODv11/DYto2L-2Jets_MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/NANOAODSIM/126X_mcRun3_2022_realistic_v2-v1/2560000/"
+    # load datasets
+    with open(datasets, "r") as f:
+        dsets = yaml.load(f, Loader=yaml.Loader)
 
-
-    fdict = {
-        'data': [
-            rootlib+path_data+"1d902a9f-0383-4fe5-9bb5-1ddc57f155fb.root",
-            rootlib+path_data+"26a9a100-7f53-4dcf-afc7-f510bd83b80b.root",
-        ],
-        'mc': [
-            rootlib+path_mc+"055461fb-e9b3-4c9d-ac5c-0c794b7e6006.root",
-            rootlib+path_mc+"09d0bebf-fb5b-4f04-95ab-e6ac8f7e5dee.root",
-        ],
-    }   
-
+    # define histogram bins
     hbins = {
-        'MET': [-200, 200, 200],
+        met: [-200, 200, 200],
         'PV_npvsGood': [0, 100, 100]
     }
-    
-    if args.hists:
-        makehists(fdict, hists, hbins, golden_json)
 
-    if args.corr:
-        get_corrections(fdict, hists, hbins, corr_file)
+    # go through runs / mc
+    for tag in dsets.keys():
+        
+        # define output paths
+        hists = f"results/hists/{tag}/{met}.root"
+        corr_files = f"results/corrections/{tag}/"
+        plots = f"results/plots/{tag}/"
+        if args.snapshot:
+            snaps = f"results/snapshots/{tag}/"
+        else:
+            snaps = False
+            
+        # get lists of process root files
+        with open(f'configs/data/{tag}.yaml') as f:
+            files = yaml.load(f, Loader=yaml.Loader)
+        
+        # make list of root files of the sample
+        rootfiles = []
+        for n in dsets[tag]["names"]:
+            rootfiles += files[n]
+
+        isdata = (dsets[tag]["type"]=="data")
+        golden_json = dsets[tag]["gjson"]
+    
+        if args.hists:
+            if os.path.exists(hists):
+                ow = input(f"File {hists} already exists. Overwrite? (y/n)")
+                if ow!="y":
+                    print("File will not be overwritten.")
+                    continue
+            
+            makehists(rootfiles, hists, hbins, golden_json, isdata, snaps)
+
+        if args.corr:
+            get_corrections(hists, hbins, corr_files, tag, plots)
 
