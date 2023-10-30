@@ -92,7 +92,7 @@ def filter_lumi(rdf, golden_json):
     return rdf.Filter("isGolden==1")
 
 
-def make_snapshot(f, golden_json, mets, snap, quants, idx):
+def make_snapshot(f, golden_json, mets, snap, quants, idx, isdata):
     rdf = ROOT.RDataFrame("Events", f)
 
     if isdata:
@@ -141,7 +141,7 @@ def makehists(infiles, hfile, hbins, golden_json, isdata, snap, snapshot, mets):
     if snapshot:
         os.makedirs(snap, exist_ok=True)
 
-        arguments = [(f, golden_json, mets, snap, quants, idx) for idx, f in enumerate(infiles)]
+        arguments = [(f, golden_json, mets, snap, quants, idx, isdata) for idx, f in enumerate(infiles)]
         nthreads = len(infiles)
 
         pool = Pool(nthreads, initargs=(RLock,), initializer=tqdm.set_lock)
@@ -179,7 +179,7 @@ def makehists(infiles, hfile, hbins, golden_json, isdata, snap, snapshot, mets):
     return
 
 
-def get_corrections(hfile, hbins, corr_file, tag, plots):
+def get_corrections(hfile, hbins, corr_file, era, plots, mets):
     """
     function to get xy corrections and plot results
 
@@ -190,48 +190,51 @@ def get_corrections(hfile, hbins, corr_file, tag, plots):
     (str) plots: path to plots
     """
 
-    met, npv = hbins.keys()
+    _met, npv = hbins.keys()
 
     corr_dict = {}
-    for xy in ['_x', '_y']:
+    for met in mets:
+        corr_dict[met] = {}
+        for xy in ['_x', '_y']:
 
-        # read histograms from root file
-        tf = ROOT.TFile(hfile, "READ")
-        h = tf.Get(met+xy)
-        h.SetDirectory(ROOT.nullptr)
-        tf.Close()
+            # read histograms from root file
+            tf = ROOT.TFile(hfile, "READ")
+            h = tf.Get(met+xy)
+            h.SetDirectory(ROOT.nullptr)
+            tf.Close()
 
-        # define and fit pol1 function
-        f1 = ROOT.TF1("pol1", "[0]*x+[1]", -10, 110)
-        h.Fit(f1, "R", "", 0, 100)
+            # define and fit pol1 function
+            f1 = ROOT.TF1("pol1", "[0]*x+[1]", -10, 110)
+            h.Fit(f1, "R", "", 0, 100)
 
-        # save fit parameter
-        corr_dict[xy] = {
-            "m": f1.GetParameter(0),
-            "c": f1.GetParameter(1)
-        }
+            # save fit parameter
+            corr_dict[met][xy] = {
+                "m": f1.GetParameter(0),
+                "c": f1.GetParameter(1)
+            }
 
-        # plot fit results
-        plot.plot_2dim(
-            h,
-            title=tag,
-            axis=['NPV', f'{met}{xy} (GeV)'],
-            outfile=f"{plots}{met+xy}",
-            xrange=[0,100],
-            yrange=[hbins[met][0], hbins[met][1]],
-            lumi='2022, 13.6 TeV',
-            line=f1,
-            results=[round(corr_dict[xy]["m"],3), round(corr_dict[xy]["c"],3)]
-        )
+            # plot fit results
+            plot.plot_2dim(
+                h,
+                title=era,
+                axis=['NPV', f'{met}{xy} (GeV)'],
+                outfile=f"{plots}{era+met+xy}",
+                xrange=[0,100],
+                yrange=[hbins[_met][0], hbins[_met][1]],
+                lumi='2022, 13.6 TeV',
+                line=f1,
+                results=[round(corr_dict[met][xy]["m"],3), round(corr_dict[met][xy]["c"],3)]
+            )
 
     os.makedirs(corr_file, exist_ok=True)
-    with open(f"{corr_file}{met}.yaml", "w") as f:
+    with open(f"{corr_file+era}.yaml", "w") as f:
         yaml.dump(corr_dict, f)
             
     return
 
 
 if __name__=='__main__':
+    ROOT.gROOT.SetBatch(1)
     args = parser.parse_args()
     datasets = args.datasets
     mets = args.met.split(',')
@@ -248,11 +251,12 @@ if __name__=='__main__':
 
     for year in dsets:
         dir_plots = f"results/plots/{year}/"
-        path_corrs = f"results/corrections/{year}.root"
+        path_corrs = f"results/corrections/{year}/"
+        os.makedirs(path_corrs, exist_ok=True)
 
         for dtmc in dsets[year]:
             isdata = (dtmc=="data")
-            snaps = f"results/snapshots/{year}/{dtmc}/"
+            snaps = f"results/snapshots/{year+dtmc}/"
             os.makedirs(snaps, exist_ok=True)
 
             with open(f'configs/data/{year+dtmc}.yaml') as f:
@@ -277,8 +281,9 @@ if __name__=='__main__':
                             print("File will not be overwritten.")
                             continue
                 
-                    makehists(rootfiles, path_hists, hbins, golden_json, isdata, snaps, args.snapshot, mets)
+                    makehists(rootfiles, path_hists, hbins, golden_json, isdata, snaps+era+'/', args.snapshot, mets)
 
                 if args.corr:
-                    get_corrections(hists, hbins, corr_files, tag, plots)
+                    print(path_hists)
+                    get_corrections(path_hists, hbins, path_corrs, era, dir_plots, mets)
 
