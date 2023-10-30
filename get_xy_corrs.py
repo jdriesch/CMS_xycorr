@@ -5,6 +5,7 @@ import json
 import os
 from tqdm  import tqdm
 import tools.plot as plot
+from multiprocessing import Pool, RLock
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -90,7 +91,28 @@ def filter_lumi(rdf, golden_json):
     )
     return rdf.Filter("isGolden==1")
 
-def makehists(infiles, hfile, hbins, golden_json, isdata, snap, mets):
+
+def make_snapshot(f, golden_json, mets, snap, quants, idx):
+    rdf = ROOT.RDataFrame("Events", f)
+
+    if isdata:
+        rdf = filter_lumi(rdf, golden_json)
+        # print("data filtered using golden lumi json: ", golden_json)
+
+    # definition of x and y component of met
+    for met in mets:
+        rdf = rdf.Define(f"{met}_x", f"{met}_pt*cos({met}_phi)")
+        rdf = rdf.Define(f"{met}_y", f"{met}_pt*sin({met}_phi)")
+    spath = f'{snap}file_{idx}.root'
+    rdf.Snapshot("Events", spath, quants)
+
+
+def job_wrapper(args):
+    return make_snapshot(*args)
+
+
+
+def makehists(infiles, hfile, hbins, golden_json, isdata, snap, snapshot, mets):
     """
     function to make 2d histograms for xy correction
 
@@ -106,7 +128,6 @@ def makehists(infiles, hfile, hbins, golden_json, isdata, snap, mets):
     # create path to root output file and create file
     path = hfile.replace(hfile.split('/')[-1], '')
     os.makedirs(path, exist_ok=True)
-    hfile = ROOT.TFile(hfile, "RECREATE")
     _met, npv = hbins.keys()
     
     hists = {}
@@ -117,47 +138,42 @@ def makehists(infiles, hfile, hbins, golden_json, isdata, snap, mets):
         hists[met+'_y'] = False
         quants += [f'{met}_x', f'{met}_y']
 
-    for f in tqdm(infiles):
-        rdf = ROOT.RDataFrame("Events", f)
+    if snapshot:
+        os.makedirs(snap, exist_ok=True)
 
-        if isdata:
-            rdf = filter_lumi(rdf, golden_json)
-            # print("data filtered using golden lumi json: ", golden_json)
+        arguments = [(f, golden_json, mets, snap, quants, idx) for idx, f in enumerate(infiles)]
+        nthreads = len(infiles)
 
-        # definition of x and y component of met
-        for met in mets:
-            rdf = rdf.Define(f"{met}_x", f"{met}_pt*cos({met}_phi)")
-            rdf = rdf.Define(f"{met}_y", f"{met}_pt*sin({met}_phi)")
+        pool = Pool(nthreads, initargs=(RLock,), initializer=tqdm.set_lock)
+        for _ in tqdm(
+            pool.imap_unordered(job_wrapper, arguments),
+            total=len(arguments),
+            desc="Total progess",
+            dynamic_ncols=True,
+            leave=True
+        ): pass
 
-        if snap:
-            spath = f"{snap}file_{infiles.index(f)}.root"
-            os.makedirs(snap, exist_ok=True)
-            rdf.Snapshot("Events", spath, quants)
+    rdf = ROOT.RDataFrame("Events", f"{snap}file_*.root")
+    # definition of 2d histograms met_xy vs npv
+    for var in hists.keys():
+        h = rdf.Histo2D(
+            (
+                var, 
+                var, 
+                hbins[npv][2], 
+                hbins[npv][0], 
+                hbins[npv][1], 
+                hbins[_met][2], 
+                hbins[_met][0], 
+                hbins[_met][1]
+            ),
+            npv, var
+        )
+        hists[var] = h
 
-        # definition of 2d histograms met_xy vs npv
-        for var in hists.keys():
-            h = rdf.Histo2D(
-                (
-                    var, 
-                    var, 
-                    hbins[npv][2], 
-                    hbins[npv][0], 
-                    hbins[npv][1], 
-                    hbins[_met][2], 
-                    hbins[_met][0], 
-                    hbins[_met][1]
-                ),
-                npv, var
-            )
-
-            if hists[var]:
-                hists[var].Add(h.GetPtr())
-            else:
-                hists[var]=h
-        
-        for var in hists.keys():
-            hists[var].Write()
-
+    hfile = ROOT.TFile(hfile, "RECREATE")
+    for var in hists.keys():
+        hists[var].Write()
     hfile.Close()
 
     return
@@ -236,10 +252,8 @@ if __name__=='__main__':
 
         for dtmc in dsets[year]:
             isdata = (dtmc=="data")
-            if args.snapshot:
-                snaps = f"results/snapshots/{year}/{dtmc}"
-            else:
-                snaps = False
+            snaps = f"results/snapshots/{year}/{dtmc}/"
+            os.makedirs(snaps, exist_ok=True)
 
             with open(f'configs/data/{year+dtmc}.yaml') as f:
                 files = yaml.load(f, Loader=yaml.Loader)
@@ -263,7 +277,7 @@ if __name__=='__main__':
                             print("File will not be overwritten.")
                             continue
                 
-                    makehists(rootfiles, path_hists, hbins, golden_json, isdata, snaps, mets)
+                    makehists(rootfiles, path_hists, hbins, golden_json, isdata, snaps, args.snapshot, mets)
 
                 if args.corr:
                     get_corrections(hists, hbins, corr_files, tag, plots)
