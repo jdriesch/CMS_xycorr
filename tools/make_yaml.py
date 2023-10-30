@@ -18,10 +18,10 @@ for year in dsets:
     for dtmc in dsets[year]:
         fdict = {}
         for era in dsets[year][dtmc]:
-            fdict[era] = {}
+            fdict[era] = []
             for sample in dsets[year][dtmc][era]["samples"]:
                 stream = os.popen(f'dasgoclient -query="file dataset={sample}"')
-                fdict[era][sample] = [
+                fdict[era] += [
                     lib+s.replace('\n', '') for s in stream.readlines()[:10]
                 ]
         with open(dpath+year+dtmc+'.yaml', "w") as f:
