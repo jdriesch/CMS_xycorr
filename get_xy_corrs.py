@@ -225,39 +225,40 @@ if __name__=='__main__':
         'PV_npvsGood': [0, 100, 100]
     }
 
-    # go through runs / mc
-    for tag in dsets.keys():
-        
-        # define output paths
-        hists = f"results/hists/{tag}/{met}.root"
-        corr_files = f"results/corrections/{tag}/"
-        plots = f"results/plots/{tag}/"
-        if args.snapshot:
-            snaps = f"results/snapshots/{tag}/"
-        else:
-            snaps = False
-            
-        # get lists of process root files
-        with open(f'configs/data/{tag}.yaml') as f:
-            files = yaml.load(f, Loader=yaml.Loader)
-        
-        # make list of root files of the sample
-        rootfiles = []
-        for n in dsets[tag]["names"]:
-            rootfiles += files[n]
+    for year in dsets:
+        dir_plots = f"results/plots/{year}/"
+        path_hists = f"results/hists/{year}.root"
+        path_corrs = f"results/corrections/{year}.root"
 
-        isdata = (dsets[tag]["type"]=="data")
-        golden_json = dsets[tag]["gjson"]
-    
-        if args.hists:
-            if os.path.exists(hists):
-                ow = input(f"File {hists} already exists. Overwrite? (y/n)")
-                if ow!="y":
-                    print("File will not be overwritten.")
-                    continue
-            
-            makehists(rootfiles, hists, hbins, golden_json, isdata, snaps)
+        for dtmc in dsets[year]:
+            isdata = (dtmc=="data")
+            if args.snapshot:
+                snaps = f"results/snapshots/{year}/{dtmc}"
+            else:
+                snaps = False
 
-        if args.corr:
-            get_corrections(hists, hbins, corr_files, tag, plots)
+            with open(f'configs/data/{year+dtmc}.yaml') as f:
+                files = yaml.load(f, Loader=yaml.Loader)
+
+            for era in dsets[year][dtmc]:
+
+                # make list of root files of the sample
+                rootfiles = files[era]
+
+                if isdata:
+                    golden_json = dsets[year][dtmc][era]["gjson"]
+                else:
+                    golden_json = ''
+
+                if args.hists:
+                    if os.path.exists(path_hists):
+                        ow = input(f"File {hists} already exists. Overwrite? (y/n)")
+                        if ow!="y":
+                            print("File will not be overwritten.")
+                            continue
+                
+                    makehists(rootfiles, path_hists, hbins, golden_json, isdata, snaps)
+
+                if args.corr:
+                    get_corrections(hists, hbins, corr_files, tag, plots)
 
