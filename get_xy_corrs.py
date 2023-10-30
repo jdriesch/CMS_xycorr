@@ -37,8 +37,8 @@ parser.add_argument(
 parser.add_argument(
     "-M",
     "--met",
-    help="MET type; default is 'MET'",
-    default='MET'
+    help="Comma-separated list of MET types; default is 'MET,PuppiMET'",
+    default='MET,PuppiMET'
 )
 
 
@@ -90,7 +90,7 @@ def filter_lumi(rdf, golden_json):
     )
     return rdf.Filter("isGolden==1")
 
-def makehists(infiles, hfile, hbins, golden_json, isdata, snap):
+def makehists(infiles, hfile, hbins, golden_json, isdata, snap, mets):
     """
     function to make 2d histograms for xy correction
 
@@ -100,33 +100,38 @@ def makehists(infiles, hfile, hbins, golden_json, isdata, snap):
     (str) golden_json: path to golden json
     (bool) isdata: True if data
     (str) snap: path to snapshot if snapshot should be stored; else: False
+    (list) mets: list of MET types to be processed
     """
 
     # create path to root output file and create file
     path = hfile.replace(hfile.split('/')[-1], '')
     os.makedirs(path, exist_ok=True)
     hfile = ROOT.TFile(hfile, "RECREATE")
-
-    met, npv = hbins.keys()
+    _met, npv = hbins.keys()
     
-    hists = {met+"_x": False, met+"_y": False}
+    hists = {}
+    quants = [npv]
+
+    for met in mets:
+        hists[met+'_x'] = False
+        hists[met+'_y'] = False
+        quants += [f'{met}_x', f'{met}_y']
 
     for f in tqdm(infiles):
         rdf = ROOT.RDataFrame("Events", f)
-
 
         if isdata:
             rdf = filter_lumi(rdf, golden_json)
             # print("data filtered using golden lumi json: ", golden_json)
 
         # definition of x and y component of met
-        rdf = rdf.Define(f"{met}_x", f"{met}_pt*cos({met}_phi)")
-        rdf = rdf.Define(f"{met}_y", f"{met}_pt*sin({met}_phi)")
+        for met in mets:
+            rdf = rdf.Define(f"{met}_x", f"{met}_pt*cos({met}_phi)")
+            rdf = rdf.Define(f"{met}_y", f"{met}_pt*sin({met}_phi)")
 
         if snap:
-            spath = f"{snap}{met}_{infiles.index(f)}.root"
+            spath = f"{snap}file_{infiles.index(f)}.root"
             os.makedirs(snap, exist_ok=True)
-            quants = [f'{met}_x', f'{met}_y', npv]
             rdf.Snapshot("Events", spath, quants)
 
         # definition of 2d histograms met_xy vs npv
@@ -138,9 +143,9 @@ def makehists(infiles, hfile, hbins, golden_json, isdata, snap):
                     hbins[npv][2], 
                     hbins[npv][0], 
                     hbins[npv][1], 
-                    hbins[met][2], 
-                    hbins[met][0], 
-                    hbins[met][1]
+                    hbins[_met][2], 
+                    hbins[_met][0], 
+                    hbins[_met][1]
                 ),
                 npv, var
             )
@@ -213,7 +218,7 @@ def get_corrections(hfile, hbins, corr_file, tag, plots):
 if __name__=='__main__':
     args = parser.parse_args()
     datasets = args.datasets
-    met = args.met
+    mets = args.met.split(',')
 
     # load datasets
     with open(datasets, "r") as f:
@@ -221,13 +226,12 @@ if __name__=='__main__':
 
     # define histogram bins
     hbins = {
-        met: [-200, 200, 200],
+        'met': [-200, 200, 200],
         'PV_npvsGood': [0, 100, 100]
     }
 
     for year in dsets:
         dir_plots = f"results/plots/{year}/"
-        path_hists = f"results/hists/{year}.root"
         path_corrs = f"results/corrections/{year}.root"
 
         for dtmc in dsets[year]:
@@ -241,6 +245,8 @@ if __name__=='__main__':
                 files = yaml.load(f, Loader=yaml.Loader)
 
             for era in dsets[year][dtmc]:
+                os.makedirs(f'results/hists/{year}', exist_ok=True)
+                path_hists = f"results/hists/{year}/{era}.root"
 
                 # make list of root files of the sample
                 rootfiles = files[era]
@@ -252,12 +258,12 @@ if __name__=='__main__':
 
                 if args.hists:
                     if os.path.exists(path_hists):
-                        ow = input(f"File {hists} already exists. Overwrite? (y/n)")
+                        ow = input(f"File {path_hists} already exists. Overwrite? (y/n)")
                         if ow!="y":
                             print("File will not be overwritten.")
                             continue
                 
-                    makehists(rootfiles, path_hists, hbins, golden_json, isdata, snaps)
+                    makehists(rootfiles, path_hists, hbins, golden_json, isdata, snaps, mets)
 
                 if args.corr:
                     get_corrections(hists, hbins, corr_files, tag, plots)
