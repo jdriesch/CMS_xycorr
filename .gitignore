@@ -1,4 +1,5 @@
-*.pdf
-*.png
-*.root
-configs/data
+**.pdf
+**.png
+**.root
+**.json
+**.pyc
