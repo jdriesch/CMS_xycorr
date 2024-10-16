@@ -6,6 +6,7 @@ Possible sources of such biases are:
 - inactive calorimeter cells/tracking regions
 - misalignment
 - displacement of the beam spot
+
 The resulting bias is observed to be roughly linear in the number of primary vertices. Consequently, the effect can be corrected without deeper understanding of the underlying reason by measuring the dependence of the mean missing transverse momentum in x or y direction on the number of primary vertices. The values are then corrected by shifting the means back to zero.
 
 In this framework, the Z->mumu phase space property of no intrinsic missing transverse momentum is leveraged to find out the aforementioned dependence.
@@ -33,13 +34,17 @@ In order to obtain a consistent set of program version, it is advised to source 
 ### b) Collecting the data files
 
 Now you can run the main file using the preparation option:
+
 `python3 get_xy_corrs.py -Y 2022 --prep`
+
 This will query the files of the datasets in the `datasets.json` file and write the file lists into the file `nanoAODs.json`, which will be of use in the next step. You will need a valid VO CMS proxy in this step as well as the next one.
 
 ### c) Running the ntuple production
 
 The ntuple production takes the files in `nanoAODs.json`, filters out the data events fulfilling the golden lumi json, and applies a selection to the Z->mumu phase space to both data and simulation:
+
 `pyhton3 get_xy_corrs.py -Y 2022 -S`
+
 The `snap_dir` path in `python/inputs/paths.py` determines the place to save the snapshots.
 You will be prompted whether to produce the snapshots locally or using HTCondor.
 In the first case, you can adjust the number of jobs with the additional option `-j 8` for the usage of multiprocessing with 8 threads.
@@ -51,23 +56,31 @@ Sometimes the snapshots will be corrupted, which will is checked after the produ
 
 The flat ntuples produced in the previous step are used to create 2d histograms of the x or y component of the missing transverse momentum against the number of reconstructed good primary vertices. These histograms are then saved to a root file determined in `python/inputs/paths.py`.
 The arguments needed are:
+
 `python3 get_xy_corrs.py -Y 2022 -H -j 8`,
+
 where once again the option `-j 8` uses multithreading techniques, now not using the multiprocessing tool in python but rather the ROOT internal method, speeding up the histogramming process considerably.
 
 ## 3. Fits
 
 The fits are done on the profile of the 2d histograms in direction of the momentum. In every bin of the number of primary vertices, the mean and standard deviation are calculated and then a linear fit is performed to the result:
+
 `python3 get_xy_corrs.py -Y 2022 -C`
+
 The results and plots of the fits are written to the directory specified in the `python/inputs/paths.py` file. 
 
 ## 4. Validation
 
 A closure test is performed by comparing the phi modulation of the missing transverse momentum component before and after correction:
+
 `python3 get_xy_corrs.py -Y 2022 --validate`
 
 # Further options
 
 The types of missing transverse momentum that are investigated can be controlled with the option `-M MET,PuppiMET`.
+
 A version name can be given to the currently used correction via `-V v0`.
+
 Debug output can be printed by adding `--debug`.
+
 The correction can be performed only on data or MC with the option `--process MC,DATA`.
