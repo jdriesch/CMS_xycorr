@@ -14,43 +14,16 @@ correctionlib.register_pyroot_binding()
 logger = logging.getLogger(__name__)
 
 
-def get_corrections(df, is_data, SFs, pu_json):
+def get_corrections(df, is_data, pu_json):
     if is_data:
-        rdf = df.Define("sf_iso", "1")
-        rdf = rdf.Define("sf_id", "1")
-        rdf = rdf.Define("sf_trg", "1")
         rdf = rdf.Define("puWeight", "1")
         rdf = rdf.Define("puWeightUp", "1")
         rdf = rdf.Define("puWeightDn", "1")
 
     else:
-
-        trgpath = SFs['trg'][0]
-        trgname = SFs['trg'][1]
-        ROOT.gROOT.ProcessLine(f'''
-            TFile *trg_tf = TFile::Open("{trgpath}", "READ");
-            TH2F *trg_mc = (TH2F*)trg_tf->Get("{trgname}_efficiencyMC");
-            TH2F *trg_dt = (TH2F*)trg_tf->Get("{trgname}_efficiencyData");
-        ''')
-
-        path_id, name_id = SFs['id'][0], SFs['id'][1]
-        path_iso, name_iso = SFs['iso'][0], SFs['iso'][1]
-        print(path_id, name_id)
         ROOT.gROOT.ProcessLine(
-            f'auto cset_id = correction::CorrectionSet::from_file("{path_id}")->at("{name_id}");\
-            auto cset_iso = correction::CorrectionSet::from_file("{path_iso}")->at("{name_iso}");\
-            auto cset_pu = correction::CorrectionSet::from_file("{pu_json}")->at("puweights");'
+            f'auto cset_pu = correction::CorrectionSet::from_file("{pu_json}")->at("puweights");'
         ) # changed puweights name to be consistent
-
-        rdf = df.Define("sf_id_1", 'cset_id->evaluate({abs(eta_1), pt_1, "nominal"})')
-        rdf = rdf.Define("sf_id_2", 'cset_id->evaluate({abs(eta_2), pt_2, "nominal"})')
-        rdf = rdf.Define("sf_id", "sf_id_1 * sf_id_2")
-
-        rdf = rdf.Define("sf_iso_1", 'cset_iso->evaluate({abs(eta_1), pt_1, "nominal"})')
-        rdf = rdf.Define("sf_iso_2", 'cset_iso->evaluate({abs(eta_2), pt_2, "nominal"})')
-        rdf = rdf.Define("sf_iso", "sf_iso_1 * sf_iso_2")
-
-        rdf = rdf.Define("sf_trg", 'get_trg_sf(eta_1, eta_2, pt_1, pt_2, trg_match_1, trg_match_2, *trg_mc, *trg_dt)')
 
         rdf = rdf.Define("puWeight", 'cset_pu->evaluate({Pileup_nTrueInt, "nominal"})')
         rdf = rdf.Define("puWeightDn", 'cset_pu->evaluate({Pileup_nTrueInt, "up"})')
@@ -59,20 +32,7 @@ def get_corrections(df, is_data, SFs, pu_json):
     return rdf
 
 
-def get_trigger_matches(df):
-    
-    rdf = df.Define("trg_ind0", "trg_match_ind(eta_1, phi_1, nTrigObj, &TrigObj_id, &TrigObj_eta, &TrigObj_phi, -99)")
-    rdf = rdf.Define("trg_ind1", "trg_match_ind(eta_2, phi_2, nTrigObj, &TrigObj_id, &TrigObj_eta, &TrigObj_phi, trg_ind0)")
-    rdf = rdf.Filter("trg_ind0 >= 0 || trg_ind1 >= 0")
-
-    rdf = rdf.Define("trg_match_1", "int match; if(trg_ind0 >= 0) match = 1; else match = 0; return match;")
-    rdf = rdf.Define("trg_match_2", "int match; if(trg_ind1 >= 0) match = 1; else match = 0; return match;")
-
-    return rdf
-
-
-
-def make_single_snapshot(f, golden_json, pu_json, mets, snap, quants, idx, isdata, SFs):
+def make_single_snapshot(f, golden_json, pu_json, mets, snap, quants, idx, isdata):
     rdf = ROOT.RDataFrame("Events", f)
 
     if isdata:
@@ -104,7 +64,7 @@ def make_single_snapshot(f, golden_json, pu_json, mets, snap, quants, idx, isdat
     rdf = rdf.Define("phi_2", "Muon_phi[ind[1]]")
 
     rdf = get_trigger_matches(rdf)
-    rdf = get_corrections(rdf, isdata, SFs, pu_json)
+    rdf = get_corrections(rdf, isdata, pu_json)
 
     # definition of x and y component of met
     for met in mets:
@@ -113,13 +73,9 @@ def make_single_snapshot(f, golden_json, pu_json, mets, snap, quants, idx, isdat
     spath = f'{snap}file_{idx}.root'
 
     logger.debug(f"The rdf contains the following columns: {rdf.GetColumnNames()}")
+    logger.debug(f'Mean pileup weight" {rdf.Mean("puWeight").GetValue()}')
 
-    print(rdf.Mean("puWeight").GetValue())
-    print(rdf.Mean("sf_iso").GetValue())
-    print(rdf.Mean("sf_trg").GetValue())
-    print(rdf.Mean("sf_id").GetValue())
-
-    quants += ['puWeight', 'puWeightUp', 'puWeightDn', 'sf_iso', 'sf_trg', 'sf_id']
+    quants += ['puWeight', 'puWeightUp', 'puWeightDn']
     rdf.Snapshot("Events", spath, quants)
 
     return
@@ -129,7 +85,7 @@ def job_wrapper(args):
     return make_single_snapshot(*args)
 
 
-def make_snapshot(files, golden_json, pu_json, mets, pileups, snap_dir, nthreads, condor_no, condor_dir, datamc, SFs, year):
+def make_snapshot(files, golden_json, pu_json, mets, pileups, snap_dir, nthreads, condor_no, condor_dir, datamc, year):
     '''
     (str) golden_json: path to golden json
     '''
@@ -152,7 +108,7 @@ def make_snapshot(files, golden_json, pu_json, mets, pileups, snap_dir, nthreads
         for met in mets:
             quants += [f'{met}_x', f'{met}_y']
 
-        arguments = [(f, golden_json, pu_json, mets, snap_dir_dtmc, quants, idx, is_data, SFs) for idx, f in enumerate(infiles)]
+        arguments = [(f, golden_json, pu_json, mets, snap_dir_dtmc, quants, idx, is_data) for idx, f in enumerate(infiles)]
         nthreads = min(nthreads, len(infiles))
 
         if condor_no >= 0:

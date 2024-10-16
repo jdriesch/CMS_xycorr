@@ -60,7 +60,6 @@ def main():
             args.jobs,
             args.condor, path_dict['condor_dir'],
             datamc,
-            path_dict['SFs'],
             args.year
         )
         check_snapshots(path_dict['snap_dir'], datamc)
