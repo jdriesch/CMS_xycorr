@@ -4,7 +4,7 @@ def parse_arguments():
     parser = ArgumentParser(
         description=
             "Derivation script for MET xy correction. \n"
-            "For standard use : python get_xy_corrs.py ... \n"
+            "For standard use : python get_xy_corrs.py --prep -S -H -C --validate -Y 2022 -j 8"
     )
     parser.add_argument(
         "-H", 

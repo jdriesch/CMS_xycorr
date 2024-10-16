@@ -6,7 +6,7 @@ def get_paths(args):
 
     paths = {
         'datasets':f'data/{args.year}/datasets.json',
-        'files': f'data/{args.year}/nanoAODs.json',
+        'nanoAODs': f'data/{args.year}/nanoAODs.json',
         'plot_dir': f"results/plots/{add_path}/",
         'corr_dir': f"results/corrections/{add_path}/",
         'hist_dir': f"results/hists/{add_path}/",

@@ -7,41 +7,46 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_files_from_das(datasets):
+def get_files_from_das(datasets, nanoAODs):
+    '''
+    make file lists from DAS identifiers in datasets.json
+
+    Args:
+    datasets (str): location of datasets.json
+    '''
 
     logger.info("Starting das queries.")
 
     if not os.path.exists(datasets):
-        logger.critical(f"Path {datasets} does not exist. Please make sure to call the script\
-            from the parent directory and provide the path to the datasets from\
-            the same directory as well.")
+        logger.critical(f"Path {datasets} does not exist.")
 
     else:
         with open(datasets) as f:
             dsets = json.load(f)
 
+        # using general redirector
         lib = "root://cms-xrd-global.cern.ch//"
+
         fdict = {}
 
+        # looping through datasets (DATA, MC)
         for k in dsets.keys():
             fdict[k] = []
+
+            # loop through sub datasets
             for d in dsets[k]["names"]:
-                if 'ceph' in d:
-                    fdict[k] += glob.glob(d)
-                    logger.debug(d)
-                else:
-                    logger.debug(f'dasgoclient -query="file dataset={d}"')
-                    stream = os.popen(f'dasgoclient -query="file dataset={d}"')
-                    fdict[k] += [
-                        lib+s.replace('\n', '') for s in stream.readlines()
-                    ]
+                logger.debug(f'dasgoclient -query="file dataset={d}"')
+                stream = os.popen(
+                    f'dasgoclient -query="file dataset={d}"'
+                )
+                fdict[k] += [
+                    lib+s.replace('\n', '') for s in stream.readlines()
+                ]
 
-        nanoaod_path = datasets.replace("datasets", 'nanoAODs')
-
-        with open(nanoaod_path, "w") as f:
+        with open(nanoAODs, "w") as f:
             json.dump(fdict, f, indent=4)
 
-    logger.info(f"File lists saved in {nanoaod_path}")
+    logger.info(f"File lists saved in {nanoAODs}")
 
     return
 

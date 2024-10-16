@@ -43,12 +43,15 @@ def main():
 
     # Preparation: getting files from DAS
     if args.prep:
-        get_files_from_das(path_dict['datasets'])
+        get_files_from_das(
+            path_dict['datasets'],
+            path_dict['nanoAODs']
+        )
 
     # step 1: make flat ntuples with necessary information
     if args.snapshot:
         make_snapshot(
-            path_dict['files'],
+            path_dict['nanoAODs'],
             path_dict['golden_json'], 
             path_dict['pu_json'],
             mets, 
@@ -67,7 +70,8 @@ def main():
             path_dict['snap_dir'],
             path_dict['hist_dir'],
             hbins,
-            args.jobs
+            args.jobs,
+            mets
         )
 
     # step 3: fit linear functions to 2d histograms

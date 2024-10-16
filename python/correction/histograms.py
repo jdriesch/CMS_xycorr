@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def make_hists(snap_dir, hist_dir, hbins, jobs):
+def make_hists(snap_dir, hist_dir, hbins, jobs, mets):
     """
     function to make 2d histograms for xy correction
 
@@ -11,6 +11,7 @@ def make_hists(snap_dir, hist_dir, hbins, jobs):
     hist_dir (str): Output directory for histograms.
     hbins (dict): Dictionary with histogram binnings.
     jobs (int): Number of threads for parallel processing.
+    mets (list): List of mets to process.
     """
 
     ROOT.EnableImplicitMT(jobs)
@@ -26,7 +27,7 @@ def make_hists(snap_dir, hist_dir, hbins, jobs):
 
         rdf = ROOT.RDataFrame("Events", f"{snap_dir}/{dtmc}/file_*.root")
 
-        for met in hbins['met']:
+        for met in mets:
             met_vars = [met+'_x', met+'_y']
 
             for npv in hbins['pileup']:

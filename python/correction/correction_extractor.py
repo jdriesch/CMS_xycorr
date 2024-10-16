@@ -7,11 +7,12 @@ def get_corrections(hist_dir, hbins, corr_dir, plot_dir, mets, lumilabel):
     """
     function to get xy corrections and plot results
 
-    (str) hfile: name of root file with histograms
-    (dict) hbins: names of npv and met with histogram bins
-    (str) corr_file: name of correction file
-    (bool) isdata: True or False
-    (str) plots: path to plots
+    hist_dir (str): Directory of histograms.
+    hbins (dict): Dictionary with histogram binnings.
+    corr_dir (str): Directory for correction jsons.
+    plot_dir (str): Directory for plots.
+    mets (list): List of mets
+    lumilabel (dict): Dictionary for lumi label position and text
     """
 
     corr_dict = {}
@@ -65,7 +66,10 @@ def get_corrections(hist_dir, hbins, corr_dir, plot_dir, mets, lumilabel):
                             yrange=[hbins['met'][met][0], hbins['met'][met][1]],
                             lumi=lumilabel[dtmc],
                             line=f1,
-                            results=[round(corr_dict[met][xy][variation]["m"],3), round(corr_dict[met][xy][variation]["c"],3)]
+                            results=[
+                                round(corr_dict[met][xy][variation]["m"],3),
+                                round(corr_dict[met][xy][variation]["c"],3)
+                            ]
                         )
 
         with open(f"{corr_dir+dtmc}.json", "w") as f:

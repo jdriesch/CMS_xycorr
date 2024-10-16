@@ -2,16 +2,16 @@ import ROOT
 import json
 
 
-def filter_lumi(rdf, golden_json):
+def filter_lumi(rdf, g_json):
     """
     function to get rdf with events filtered with golden json
     
-    (ROOT.RDataFrame) rdf: dataframe
-    (str) golden_json: path to golden json
+    rdf (ROOT.RDataFrame) : RDataFrame with recorded data
+    g_json (str): path to golden json
     """
 
     # load content of golden json
-    with open(golden_json) as cf:
+    with open(g_json) as cf:
         goldenruns = json.load(cf)
 
     # extract runs and lumi sections to lists
@@ -48,7 +48,10 @@ def filter_lumi(rdf, golden_json):
             return 0;
         """
     )
-    return rdf.Filter("isGolden==1")
+
+    rdf = rdf.Filter("isGolden==1")
+
+    return rdf
 
 
 ROOT.gROOT.ProcessLine(
