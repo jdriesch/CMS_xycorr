@@ -7,16 +7,18 @@ def make_hists(snap_dir, hist_dir, hbins, jobs):
     """
     function to make 2d histograms for xy correction
 
-    (list) infiles: list with event root files
-    (str) hfile: name of output root file with histograms
-    (dict) hbins: names of npv and met with histogram bins
-    (list) mets: list of MET types to be processed
+    snap_dir (str): Directory of snapshots.
+    hist_dir (str): Output directory for histograms.
+    hbins (dict): Dictionary with histogram binnings.
+    jobs (int): Number of threads for parallel processing.
     """
 
     ROOT.EnableImplicitMT(jobs)
 
     for dtmc in ['DATA', 'MC']:
-        logger.info(f"Starting histogram production for {dtmc} with {jobs} threads.")
+        logger.info(
+            f"Starting histogram production for {dtmc} with {jobs} threads."
+        )
 
         is_data = (dtmc=='DATA')
 
@@ -53,6 +55,8 @@ def make_hists(snap_dir, hist_dir, hbins, jobs):
             hists[var].Write()
         hfile.Close()
 
-        logger.info(f"Histogram production finished for {dtmc}. Saved in {rfile}")
+        logger.info(
+            f"Histogram production finished for {dtmc}. Saved in {rfile}"
+        )
 
     return
