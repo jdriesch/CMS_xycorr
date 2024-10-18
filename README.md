@@ -15,6 +15,7 @@ The correction procedure can be roughly categorized into four steps:
 2. histograms
 3. fits
 4. validation
+5. conversion to json scheme
 
 ## 1. Preparations
 
@@ -75,7 +76,18 @@ A closure test is performed by comparing the phi modulation of the missing trans
 
 `python3 get_xy_corrs.py -Y 2022 --validate`
 
-# Further options
+The results should show an almost flat MET phi distribution after correction.
+
+## 5. Conversion to json scheme
+
+The last step is the conversion to the json pog integration scheme. It can be started with the following command:
+
+`python3 get_xy_corrs.py --convert 2022,2022EE`
+
+where the epochs listed are combined into a common json lib file.
+
+
+## Further options
 
 The types of missing transverse momentum that are investigated can be controlled with the option `-M MET,PuppiMET`.
 

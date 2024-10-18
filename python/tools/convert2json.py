@@ -1,329 +1,277 @@
 import ROOT
 import json
 import correctionlib.schemav2 as cs
+import correctionlib
 import numpy as np
+import logging
 
-def get_histograms(path):
-    hists = {}
-    tf_resol = ROOT.TFile(path+'step2_fitresults.root', 'read')
-    tf_scale = ROOT.TFile(path+'step3_correction.root', 'read')
-    tf_resol_k = ROOT.TFile(path+'step4_k.root', 'read')
+logger = logging.getLogger(__name__)
 
-    hists['cb_params'] = {
-        "hist": tf_resol.Get("h_results_cb"),
-        "description": "Parameters of the Crystal Ball function for the resolution smearing"
-    }
-    hists['poly_params'] = {
-        "hist": tf_resol.Get("h_results_poly"),
-        "description": "Parameters of the 2nd order polynomial for the resolution smearing"
-    }
-    hists['m_data'] = {
-        "hist": tf_scale.Get("M_DATA"),
-        "description": "Multiplicative part of data scale correction"
-    }
-    hists['a_data'] = {
-        "hist": tf_scale.Get("A_DATA"),
-        "description": "Additive part of data scale correction"
-    }
-    hists['m_mc'] = {
-        "hist": tf_scale.Get("M_SIG"),
-        "description": "Multiplicative part of MC scale correction"
-    }
-    hists['a_mc'] = {
-        "hist": tf_scale.Get("A_SIG"),
-        "description": "Additive part of MC scale correction"
-    }
-    hists['k_data'] = {
-        "hist": tf_resol_k.Get("k_hist_DATA").ProjectionX("k_hist_data", 3, 3),
-        "description": "Additional resolution smearing to match data"
-    }
-    hists['k_mc'] = {
-        "hist": tf_resol_k.Get("k_hist_SIG").ProjectionX("k_hist_mc", 3, 3),
-        "description": "Additional resolution smearing to match MC"
-    }
+correctionlib.register_pyroot_binding()
 
-    for h in hists:
-        hists[h]["hist"].SetDirectory(ROOT.nullptr)
-
-    tf_resol.Close()
-    tf_scale.Close()
-    tf_resol_k.Close()
-    return hists
+ROOT.EnableImplicitMT(24)
 
 
-def get_unc_hists(path):
-    tf = ROOT.TFile(path, 'read')
-    hists = {}
-    hists['m_data'] = tf.Get('M_DATA3_all_pyx')
-    hists['a_data'] = tf.Get('A_DATA3_all_pyx')
-    hists['a_mc'] = tf.Get('A_SIG3_all_pyx')
-    hists['m_mc'] = tf.Get('M_SIG3_all_pyx')
-    hists['k_data'] = tf.Get('k_all_DATA_pfx')
-    hists['k_mc'] = tf.Get('k_all_SIG_pfx')
+def build_combined_dict(mets, epochs, corr_dir, year):
+    '''
+    combine the correction dictionaries provided
 
-    for h in hists:
-        hists[h].SetDirectory(ROOT.nullptr)
+    Args:
+        mets (list): types of met
+        epochs (list): different epochs to combine
+        corr_dir (str): correction directory of year (year will be replaced)
+        year (str): year (will be replaced)
+    '''
 
-    return hists
+    logger.info("Combining the dictionaries")
 
+    comb_dict = {}
+    for epoch in epochs:
+        path = corr_dir.replace(year, epoch)
 
-def convert_th1(hist):
-    xbins = []
-    entries = []
-    uncs = []
+        comb_dict[epoch] = {}
+        for dtmc in ['DATA', 'MC']:
+            with open(f'{path}{dtmc}.json', 'r') as f:
+                comb_dict[epoch][dtmc] = json.load(f)
 
-    xaxis = hist.GetXaxis()
-
-    for i in range(xaxis.GetNbins()+1):
-        xbins.append(xaxis.GetXbins().At(i))
-
-        if i==0:
-            continue
-        else:
-            entries.append(hist.GetBinContent(i))
-            uncs.append(hist.GetBinError(i))
-
-    xbins = [round(x, 2) for x in xbins]
-    entries = [round(e, 6) for e in entries]
-
-    return xbins, entries, uncs
+    return comb_dict
 
 
-def convert_th2(hist):
-    xbins, ybins = [], []
-    entries = []
-    uncs = []
-
-    xaxis = hist.GetXaxis()
-    yaxis = hist.GetYaxis()
-
-    for x in range(xaxis.GetNbins()+1):
-        xbins.append(xaxis.GetXbins().At(x))
-
-    for y in range(yaxis.GetNbins()+1):
-        ybins.append(yaxis.GetXbins().At(y))
-
-    for x in range(len(xbins)-1):
-        entries.append([])
-        uncs.append([])
-        for y in range(len(ybins)-1):
-            entries[-1].append(hist.GetBinContent(x+1, y+1))
-            uncs[-1].append(hist.GetBinError(x+1, y+1))
-
-    xbins = [round(x, 2) for x in xbins]
-    ybins = [round(y, 2) for y in ybins]
-
-    print(xbins, ybins, entries, hist)
-
-
-    return xbins, ybins, entries, uncs
-
-
-def convert_th3(hist):
-    xbins, ybins, zbins = [], [], []
-    entries = []
-
-    xaxis = hist.GetXaxis()
-    yaxis = hist.GetYaxis()
-    zaxis = hist.GetZaxis()
-
-    for x in range(xaxis.GetNbins()+1):
-        xbins.append(xaxis.GetXbins().At(x))
-
-    for y in range(yaxis.GetNbins()+1):
-        ybins.append(yaxis.GetXbins().At(y))
-
-    ybins[0] = 0
-    ybins[-1] = 100
-
-    for z in range(zaxis.GetNbins()):
-        zbins.append(zaxis.GetXbins().At(z))
-
-    for x in range(len(xbins)-1):
-        entries.append([])
-        for y in range(len(ybins)-1):
-            entries[-1].append([])
-            for z in range(len(zbins)):
-                # print(entries)
-                entries[-1][-1].append(hist.GetBinContent(x+1, y+1, z+1))
-
-    xbins = [round(x, 2) for x in xbins]
-
-    return xbins, ybins, zbins, entries
-                               
-
-hdir = '../hists/2022EE_nlo/'     
-hists = get_histograms(hdir)
-uncs = {
-    "step3": get_unc_hists(hdir+'systs/bin_step3.root'),
-    "step4": get_unc_hists(hdir+'systs/bin_step4.root'),
-    "stat": get_unc_hists(hdir+'systs/stat.root'),
-}
-corrections = []
-
-# for h in subset:
-for h in hists:
-    print(h)
-    histo = hists[h]["hist"]
-    description = hists[h]["description"]
-    dim = histo.GetDimension()
-
-    if dim==1:
-        xbins, entries, _ = convert_th1(histo)
-        _, _, syst = convert_th1(uncs["step4"][h])
-        _, _, stat = convert_th1(uncs["stat"][h])
-
-        content = []
-        for x_bin_idx in range(len(entries)):
-            content.append(cs.Category(
-                nodetype='category',
-                input='variation',
-                content=[
-                    {"key": "nom", "value": entries[x_bin_idx]},
-                    {"key": "syst", "value": syst[x_bin_idx]},
-                    {"key": "stat", "value": stat[x_bin_idx]}
-                ]
-            ))
-
-        correction = cs.Correction(
-            name=h,
-            description=description,
-            version=1,
-            inputs=[
-                cs.Variable(name='abseta', type='real'),
-                cs.Variable(name='variation', type='string')
-            ],
-            output=cs.Variable(name='k', type='real'),
-            data=cs.Binning(
-                nodetype="binning",
-                input='abseta',
-                edges=xbins,
-                content=content,
-                flow='clamp'
-            )
-        )
-    elif dim==2:
-        xbins, ybins, entries, _ = convert_th2(histo)
-        _, _, _, syst = convert_th2(uncs["step3"][h])
-        _, _, _, stat = convert_th2(uncs["stat"][h])
-
-        if h == 'a_mc':
-            print(entries)
-            print(syst)
-            print(stat)
-
-        x_binnings = []
-
-        # Create the binning structure for each pt bin
-        for x_bin_idx in range(len(xbins)-1):
-
-            content = []
-            for y_bin_idx in range(len(entries[x_bin_idx])):
-
-                content.append(cs.Category(
-                    nodetype='category',
-                    input='variation',
-                    content=[
-                        {"key": "nom", "value": entries[x_bin_idx][y_bin_idx]},
-                        {"key": "syst", "value": syst[x_bin_idx][y_bin_idx]},
-                        {"key": "stat", "value": stat[x_bin_idx][y_bin_idx]}
-                    ]
-                ))
-
-            x_binning = cs.Binning(
-                nodetype="binning",
-                input='phi',
-                edges=ybins,
-                content=content,
-                flow='clamp'
-            )
-            x_binnings.append(x_binning)
-
-        # Define the correction object
-        correction = cs.Correction(
-            name=h,
-            description=description,
-            version=1,
-            inputs=[
-                cs.Variable(name='eta', type='real'),
-                cs.Variable(name='phi', type='real'),
-                cs.Variable(name='variation', type='string')
-            ],
-            output=cs.Variable(name='correction', type='real'),
-            data=cs.Binning(
-                nodetype="binning",
-                input='eta',
-                edges=xbins,
-                content=x_binnings,
-                flow='clamp'
-            )
-        )
-
-    elif dim==3:
-        xbins, ybins, zbins, entries = convert_th3(histo)
-
-        x_binnings = []
-        # Create the binning structure for each pt bin
-        for x_bin_idx in range(len(xbins)-1):
+def make_correction_with_formula(comb_dict, corr_dir, year):
+    """
+    Create a correctionlib json file with corrections.
     
-            y_binnings = []
-            entries_y = entries[x_bin_idx]
+    Args:
+        comb_dict (dict): output dictionary from previous step
+        corr_dir (str): correction directory
+        year (str): year
+    """
 
-            for y_bin_idx in range(len(ybins)-1):
-                
-                entries_z = []
+    logger.info("Setting up clib file.")
 
-                for z_bin_idx in range(len(zbins)):
-                    entries_z.append({"key": z_bin_idx, "value": entries_y[y_bin_idx][z_bin_idx]})
+    h = 'met_xy_corrections'
+    description = 'Apply MET xy corrections to PuppiMET or MET'
 
-                y_binning = cs.Category(
-                    nodetype="category",
-                    input='parameter',
-                    content=entries_z,
+    # getting variations from dictionary
+    epochs = list(comb_dict.keys())
+    dtmc = list(comb_dict[epochs[0]].keys())
+    mets = list(comb_dict[epochs[0]][dtmc[0]].keys())
+    variations = {}
+    for d in dtmc:
+        variations[d] = list(comb_dict[epochs[0]][d][mets[0]]["_x"].keys())
+
+    met_content = []
+
+    # Loop over the categories to fill the correction content
+    for met in mets:
+        epochs_content = []
+        for e in epochs:
+            dtmc_content = []
+            for d in dtmc:
+                vrt_content = []
+                logger.debug(f"Variations for {met}, {e}, {d}: {variations[d]}")
+
+                for vrt in variations[d]:
+                    params = comb_dict[e][d][met]
+
+                    # Expression for pt correction
+                    pt_x = "(x * cos(y) - ([0] * z + [1]))"
+                    pt_y = "(x * sin(y) - ([2] * z + [3]))"
+
+                    sigma_pt_x = "sqrt("\
+                            f"pow({pt_x} * [4], 2) + "\
+                            f"pow([5], 2) +"\
+                            f"2 * {pt_x} * [4] * [5] * [6])"
+                    sigma_pt_y = "sqrt("\
+                            f"pow({pt_y} * [7], 2) + "\
+                            f"pow([8], 2) +"\
+                            f"2 * {pt_y} * [7] * [8] * [9])"
+
+                    pt_x_up = f"{pt_x} + {sigma_pt_x}"
+                    pt_x_dn = f"{pt_x} - {sigma_pt_x}"
+
+                    pt_y_up = f"{pt_y} + {sigma_pt_y}"
+                    pt_y_dn = f"{pt_y} - {sigma_pt_y}"
+
+                    pt_expression = (f"sqrt(pow({pt_x},2) + pow({pt_y},2))")
+                    phi_expression = (f"atan2({pt_y}, {pt_x})")
+
+                    pt_expression_xup = (f"sqrt(pow({pt_x_up},2) + pow({pt_y},2))")
+                    phi_expression_xup = (f"atan2({pt_y}, {pt_x_up})")
+                    pt_expression_xdn = (f"sqrt(pow({pt_x_dn},2) + pow({pt_y},2))")
+                    phi_expression_xdn = (f"atan2({pt_y}, {pt_x_dn})")
+
+                    pt_expression_yup = (f"sqrt(pow({pt_x},2) + pow({pt_y_up},2))")
+                    phi_expression_yup = (f"atan2({pt_y_up}, {pt_x})")
+                    pt_expression_ydn = (f"sqrt(pow({pt_x},2) + pow({pt_y_dn},2))")
+                    phi_expression_ydn = (f"atan2({pt_y_dn}, {pt_x})")
+
+
+                    expressions = {
+                        "pt": pt_expression,
+                        "phi": phi_expression,
+                        "pt_stat_xup": pt_expression_xup,
+                        "pt_stat_xdn": pt_expression_xdn,
+                        "pt_stat_yup": pt_expression_yup,
+                        "pt_stat_ydn": pt_expression_ydn,
+                        "phi_stat_xup": phi_expression_xup,
+                        "phi_stat_xdn": phi_expression_xdn,
+                        "phi_stat_yup": phi_expression_yup,
+                        "phi_stat_ydn": phi_expression_ydn,
+                    }
+
+                    content = []
+
+                    for exp in expressions:
+                        formula = cs.Formula(
+                            nodetype="formula",
+                            expression=expressions[exp],
+                            parameters=[
+                                params["_x"][vrt]["m"],
+                                params["_x"][vrt]["c"],
+                                params["_y"][vrt]["m"],
+                                params["_y"][vrt]["c"],
+                                params["_x"][vrt]["m_stat"],
+                                params["_x"][vrt]["c_stat"],
+                                params["_x"][vrt]["correlation"],
+                                params["_y"][vrt]["m_stat"],
+                                params["_y"][vrt]["c_stat"],
+                                params["_y"][vrt]["correlation"]
+                            ],
+                            parser='TFormula',
+                            variables=["met_pt", "met_phi", "npvGood"],
+                        )
+
+                        content.append({"key": exp, "value": formula})
+
+                    # Append the variation content with both formulas
+                    vrt_content.append(
+                        {
+                            "key": vrt,
+                            "value": cs.Category(
+                                nodetype="category",
+                                input='pt_phi',
+                                content=content
+                            )
+                        }
+                    )
+
+
+                # Build the dtmc content with the variation category
+                dtmc_content.append(
+                    {"key": d, "value": cs.Category(
+                        nodetype="category",
+                        input='variation',
+                        content=vrt_content
+                    )}
                 )
 
-                y_binnings.append(y_binning)
-            
-            x_binning = cs.Binning(
-                nodetype="binning",
-                input='nTrackerLayers',
-                edges=ybins,
-                content=y_binnings,
-                flow='clamp'
+            # Build the epoch content
+            epochs_content.append(
+                {"key": e, "value": cs.Category(
+                    nodetype="category",
+                    input='dtmc',
+                    content=dtmc_content
+                )}
             )
-            x_binnings.append(x_binning)
 
-        # Define the correction object
-        correction = cs.Correction(
-            name=h,
-            description=description,
-            version=1,
-            inputs=[
-                cs.Variable(name='abseta', type='real'),
-                cs.Variable(name='nTrackerLayers', type='real'),
-                cs.Variable(name='parameter', type='int')
-            ],
-            output=cs.Variable(name='correction', type='real'),
-            data=cs.Binning(
-                nodetype="binning",
-                input='abseta',
-                edges=xbins,
-                content=x_binnings,
-                flow='clamp'
-            )
+        # Build the MET type content
+        met_content.append(
+            {"key": met, "value": cs.Category(
+                nodetype="category",
+                input='epoch',
+                content=epochs_content
+            )}
         )
 
-    else:
-        print("Something is wrong, check dimension of histogram")
+    # Define the correction using correctionlib schema
+    correction = cs.Correction(
+        name=h,
+        description=description,
+        version=1,
+        inputs=[
+            cs.Variable(name='pt_phi', type='string'),     # MET type (MET or PuppiMET)
+            cs.Variable(name='met_type', type='string'),     # MET type (MET or PuppiMET)
+            cs.Variable(name='epoch', type='string'),    # Epoch (2022 or 2022EE)
+            cs.Variable(name='dtmc', type='string'),     # DATA or MC
+            cs.Variable(name='variation', type='string'), # Variation (nom, puup, etc.)
+            cs.Variable(name='met_pt', type='real'),     # met_pt (x)
+            cs.Variable(name='met_phi', type='real'),    # met_phi (y)
+            cs.Variable(name='npvGood', type='real')     # npvGood (z)
+        ],
+        output=cs.Variable(name='pt_corr', type='real'), # Corrected pt
+        data=cs.Category(
+            nodetype="category",
+            input='met_type',
+            content=met_content
+        )
+    )
 
-    corrections.append(correction)
-    # print(correction)
+    cset = cs.CorrectionSet(
+        schema_version=2,
+        corrections=[correction],
+        description="Description"
+    )
 
-cset = cs.CorrectionSet(
-    schema_version=2,
-    corrections=corrections,
-    description="Parameters for muon scale/resolution correction"
-)
+    path = corr_dir. replace(f'{year}/', 'schemaV2')
 
-with open(f'{hdir}schemaV2.json', 'w') as fout:
-    fout.write(cset.json(exclude_unset=True, indent=4))
+    for epoch in epochs:
+        path += f'_{epoch}'
+    
+    path += '.json'
+
+    with open(path, 'w') as fout:
+        fout.write(cset.json(exclude_unset=True, indent=4))
+
+    logger.info(f'Saved clib file in {path}')
+
+    return
+
+
+def validate_json():
+    dtmc = 'MC'
+    rdf = ROOT.RDataFrame("Events", f'/ceph/jdriesch/CMS_xycorr/snapshots/v0/2022/{dtmc}/*.root')
+
+    ROOT.gROOT.ProcessLine(
+        'auto cs_pu = correction::CorrectionSet::from_file("results/corrections/v0/schemaV2_2022_2022EE.json")->at("met_xy_corrections");'
+    )
+
+    rdf = rdf.Define('met_phi', 'atan2(MET_y, MET_x)')
+    rdf = rdf.Define('met_pt', 'sqrt(MET_y*MET_y + MET_x*MET_x)')
+
+    rdf = rdf.Define('met_phi_corr', 'cs_pu->evaluate({"phi", "MET", "2022","'+dtmc+'", "nom", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
+    rdf = rdf.Define('met_phi_corr_xup', 'cs_pu->evaluate({"phi_stat_xup", "MET", "2022", "'+dtmc+'", "nom", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
+    rdf = rdf.Define('met_phi_corr_xdn', 'cs_pu->evaluate({"phi_stat_xdn", "MET", "2022", "'+dtmc+'", "nom", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
+    rdf = rdf.Define('met_phi_corr_yup', 'cs_pu->evaluate({"phi_stat_yup", "MET", "2022", "'+dtmc+'", "nom", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
+    rdf = rdf.Define('met_phi_corr_ydn', 'cs_pu->evaluate({"phi_stat_ydn", "MET", "2022", "'+dtmc+'", "nom", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
+
+    rdf = rdf.Define('met_phi_corr_puup', 'cs_pu->evaluate({"phi", "MET", "2022", "'+dtmc+'", "pu_up", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
+    rdf = rdf.Define('met_phi_corr_pudn', 'cs_pu->evaluate({"phi", "MET", "2022", "'+dtmc+'", "pu_dn", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
+
+    hists = []
+    for hn in ["phi", "phi_corr", "phi_corr_xup", "phi_corr_xdn", "phi_corr_puup", "phi_corr_pudn"]:
+        hists.append(rdf.Histo1D((hn, "", 30, -3.14, 3.14), f'met_{hn}'))
+
+    f = ROOT.TFile(f'test_{dtmc}.root', 'recreate')
+    for h in hists:
+        h.Write()
+    f.Close()
+
+    return
+
+
+if __name__=='__main__':
+
+    comb_dict = build_combined_dict(
+        ['MET', 'PuppiMET'],
+        ['2022', '2022EE']
+    )
+    
+    make_correction_with_formula(comb_dict, ['MET', 'PuppiMET'], ['2022', '2022EE'])
+
+    cset = correctionlib.CorrectionSet.from_file("schemaV2.json")
+
+    print(cset.get("met_xy_corrections").evaluate('pt', 'MET', '2022', 'DATA', 'nom', 50., 1.1, 40.))
+    print(cset.get("met_xy_corrections").evaluate('pt', 'MET', '2022', 'MC', 'nom', 50., 1.11, 25.))
+
+    validate()

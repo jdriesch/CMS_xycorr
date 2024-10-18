@@ -18,7 +18,7 @@ from python.inputs.labels import get_labels
 # scripts
 from python.tools.das_query import get_files_from_das
 from python.tools.validate import make_validation_plots
-
+from python.tools.convert2json import build_combined_dict, make_correction_with_formula, validate_json
 
 ROOT.gROOT.SetBatch(1)
 
@@ -85,7 +85,22 @@ def main():
             lumilabels
         )
 
+    # make correction lib schema v2
+    if args.convert != '':
+        combined_dict = build_combined_dict(
+            mets=mets,
+            epochs=args.convert.split(','),
+            corr_dir=path_dict['corr_dir'],
+            year=args.year
+        )
+        make_correction_with_formula(
+            combined_dict,
+            path_dict['corr_dir'],
+            args.year
+        )
+
     # closure
+    # TODO: make flexible wrt year
     if args.validate:
         make_validation_plots(
             path_dict['snap_dir'],
@@ -95,7 +110,7 @@ def main():
             axislabels,
             lumilabels
         )
-
+        # validate_json()
 
 if __name__=='__main__':
     main()

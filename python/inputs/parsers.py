@@ -83,6 +83,12 @@ def parse_arguments():
         default='DATA,MC',
         type=str
     )
+    parser.add_argument(
+        "--convert",
+        help="Comma separated list of years to combine and convert",
+        default='',
+        type=str
+    )
 
     args = parser.parse_args()
 

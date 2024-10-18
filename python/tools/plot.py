@@ -13,7 +13,7 @@ def plot_2dim(
         yrange = [-100,100],
         lumi = ['2022, 13.6 TeV', 0.2],
         drawoption='COLZ',
-        line = False,
+        lines = False,
         results = ["", ""]
     ):
     c = ROOT.TCanvas("c", '', 800, 600)
@@ -55,12 +55,13 @@ def plot_2dim(
     stats.GetListOfLines().Last().SetTextColor(ROOT.kRed)
     stats.Draw("SAME")
 
-    if line:
+    if lines:
         prof = h.ProfileX("prof", 0, 200)
         prof.SetLineWidth(2)
         prof.SetLineColor(ROOT.kBlack)
         prof.Draw("same")
-        line.Draw("same")
+        for line in lines:
+            line.Draw("same")
     
     path = outfile.replace(outfile.split('/')[-1], '')
     os.makedirs(path, exist_ok=True)

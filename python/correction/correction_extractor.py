@@ -44,19 +44,25 @@ def get_corrections(hist_dir, hbins, corr_dir, plot_dir, mets, lumilabel):
 
                     # define and fit pol1 function
                     f1 = ROOT.TF1("pol1", "[0]*x+[1]", -10, 110)
-                    h.Fit(f1, "R", "", 10, 70)
+                    fitresult = h.Fit(f1, "R S", "", 10, 70)
 
                     # save fit parameter
                     corr_dict[met][xy][variation] = {
                         "m": f1.GetParameter(0),
+                        "m_stat": f1.GetParError(0),
                         "c": f1.GetParameter(1),
+                        "c_stat": f1.GetParError(1),
+                        "correlation": fitresult.Correlation(0,1)
                     }
-                    if variation == 'nom':
-                        corr_dict[met][xy]["stat"] = {
-                            "m": f1.GetParError(0),
-                            "c": f1.GetParError(1),
-                        }
 
+                    f1_up = ROOT.TF1("pol1up", "[0]*x+[1]", -10, 110)
+                    f1_up.SetParameter(0, f1.GetParameter(0) + f1.GetParError(0))
+                    f1_up.SetParameter(1, f1.GetParameter(1) + fitresult.Correlation(0,1) * f1.GetParError(1))
+                    f1_dn = ROOT.TF1("pol1dn", "[0]*x+[1]", -10, 110)
+                    f1_dn.SetParameter(0, f1.GetParameter(0) - f1.GetParError(0))
+                    f1_dn.SetParameter(1, f1.GetParameter(1) - fitresult.Correlation(0,1) * f1.GetParError(1))
+
+                    if variation == "nom":
                         # plot fit results
                         plot.plot_2dim(
                             h,
@@ -65,7 +71,7 @@ def get_corrections(hist_dir, hbins, corr_dir, plot_dir, mets, lumilabel):
                             xrange=[0,100],
                             yrange=[hbins['met'][met][0], hbins['met'][met][1]],
                             lumi=lumilabel[dtmc],
-                            line=f1,
+                            lines=[f1, f1_up, f1_dn],
                             results=[
                                 round(corr_dict[met][xy][variation]["m"],3),
                                 round(corr_dict[met][xy][variation]["c"],3)
