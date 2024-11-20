@@ -126,77 +126,43 @@ ROOT::VecOps::RVec<Int_t> get_indices(
 )
 
 
-ROOT.gROOT.ProcessLine(
-'''
-Float_t get_trg_sf(
-    Float_t eta_1, Float_t eta_2, 
-    Float_t pt_1, Float_t pt_2, 
-    Bool_t trg_match_1, Bool_t trg_match_2,
-    TH2F trg_mc, TH2F trg_dt
-){
-    double sf = 1.0;  // Default scale factor
-    double eff_mc_1 = trg_mc.GetBinContent(trg_mc.FindBin(abs(eta_1), pt_1));
-    double eff_mc_2 = trg_mc.GetBinContent(trg_mc.FindBin(abs(eta_2), pt_2));
-    double eff_dt_1 = trg_dt.GetBinContent(trg_dt.FindBin(abs(eta_1), pt_1));
-    double eff_dt_2 = trg_dt.GetBinContent(trg_dt.FindBin(abs(eta_2), pt_2));
+def filter_zmm(rdf):
+    """
+    function to get rdf with events filtered for Z->mumu
+    
+    rdf (ROOT.RDataFrame) : RDataFrame with recorded data
+    """
 
-    if(trg_match_1 == 0){
-        eff_mc_1 = 0;
-        eff_dt_1 = 0;
-    }
-    if(trg_match_2 == 0){
-        eff_mc_2 = 0;
-        eff_dt_2 = 0;
-    }
+    # isomu24 trigger
+    rdf = rdf.Filter("HLT_IsoMu24")
 
-    double eff_mc = 1.0 - (1.0 - eff_mc_1) * (1.0 - eff_mc_2);
-    double eff_dt = 1.0 - (1.0 - eff_dt_1) * (1.0 - eff_dt_2);
+    rdf = rdf.Define(
+        "ind",
+        f"""ROOT::VecOps::RVec<Int_t> (get_indices(
+            nMuon,
+            &Muon_pt,
+            &Muon_eta,
+            &Muon_phi,
+            &Muon_mass,
+            &Muon_pfIsoId,
+            &Muon_tightId,
+            &Muon_charge,
+            25,
+            91.1876,
+            20,
+            4
+            ))"""
+    )
+    rdf = rdf.Define("ind0", "ind[0]")
+    rdf = rdf.Define("ind1", "ind[1]")
+    rdf = rdf.Filter("ind0 + ind1 > 0")
+    rdf = rdf.Define("pt_1", "Muon_pt[ind[0]]")
+    rdf = rdf.Define("pt_2", "Muon_pt[ind[1]]")
+    rdf = rdf.Define("eta_1", "Muon_eta[ind[0]]")
+    rdf = rdf.Define("eta_2", "Muon_eta[ind[1]]")
+    rdf = rdf.Define("phi_1", "Muon_phi[ind[0]]")
+    rdf = rdf.Define("phi_2", "Muon_phi[ind[1]]")
 
-    if (eff_mc == 0) {
-        // std::cout << "mc efficiency is 0 in this bin: " << pt_1 << ", " << pt_2 << ", " << eta_1 << ", " << eta_2 << std::endl;
-        return 1.0;  // Return default scale factor if eff_mc is zero
-    } else {
-        sf = eff_dt / eff_mc;  // Calculate scale factor
-        return sf;
-    }
-}
-'''
-)
+    rdf = rdf.Define("mass_Z", "sqrt(2 * pt_1 * pt_2 * (cosh(eta_1 - eta_2) - cos(phi_1 - phi_2)))")
 
-
-ROOT.gROOT.ProcessLine(
-'''
-// trigger matching
-UInt_t trg_match_ind(
-    Float_t eta,
-    Float_t phi,
-    Int_t nTrigObj,
-    ROOT::VecOps::RVec<UShort_t> *TrigObj_id,
-    ROOT::VecOps::RVec<Float_t> *TrigObj_eta,
-    ROOT::VecOps::RVec<Float_t> *TrigObj_phi,
-    Int_t match1
-){
-    Int_t index = -99;
-    Float_t dRmin = 1000;
-    Float_t dR, dEta, dPhi;
-    for(int i=0; i<nTrigObj; i++){
-        if (TrigObj_id->at(i) != 13) continue;
-        if (TrigObj_id->at(i) == match1) continue;
-        dEta = eta - TrigObj_eta->at(i);
-        dPhi = (phi - TrigObj_phi->at(i));
-        if (dPhi > 3.1415) dPhi = 2*3.1415 - dPhi;
-        dR = sqrt(dEta*dEta + dPhi*dPhi);
-        if (dR > 0.1) continue;
-        if (index > -1){
-            if(dR < dRmin) {
-                dRmin = dR;
-                index = i;
-            }
-            else continue;
-        }
-        else index = i;
-    }
-    return index;
-}
-'''
-)
+    return rdf

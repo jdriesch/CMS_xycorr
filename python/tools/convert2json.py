@@ -249,7 +249,7 @@ def validate_json():
     rdf = rdf.Define('met_phi_corr_pudn', 'cs_pu->evaluate({"phi", "MET", "2022", "'+dtmc+'", "pu_dn", met_pt, met_phi, static_cast<float>(PV_npvsGood)})')
 
     hists = []
-    for hn in ["phi", "phi_corr", "phi_corr_xup", "phi_corr_xdn", "phi_corr_puup", "phi_corr_pudn"]:
+    for hn in ["phi", "phi_corr", "phi_corr_xup", "phi_corr_xdn", "phi_corr_yup", "phi_corr_ydn", "phi_corr_puup", "phi_corr_pudn"]:
         hists.append(rdf.Histo1D((hn, "", 30, -3.14, 3.14), f'met_{hn}'))
 
     f = ROOT.TFile(f'test_{dtmc}.root', 'recreate')
@@ -274,4 +274,4 @@ if __name__=='__main__':
     print(cset.get("met_xy_corrections").evaluate('pt', 'MET', '2022', 'DATA', 'nom', 50., 1.1, 40.))
     print(cset.get("met_xy_corrections").evaluate('pt', 'MET', '2022', 'MC', 'nom', 50., 1.11, 25.))
 
-    validate()
+    validate_json()

@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_files_from_das(datasets, nanoAODs):
+def get_files_from_das(datasets, nanoAODs, year):
     '''
     make file lists from DAS identifiers in datasets.json
 
@@ -22,7 +22,7 @@ def get_files_from_das(datasets, nanoAODs):
 
     else:
         with open(datasets) as f:
-            dsets = json.load(f)
+            dsets = json.load(f)[year]
 
         # using general redirector
         lib = "root://cms-xrd-global.cern.ch//"

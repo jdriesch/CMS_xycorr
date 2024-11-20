@@ -24,7 +24,7 @@ def parse_arguments():
         "-Y", 
         "--year", 
         help="Year / epoch to be run over (needs to be defined in ./data/)", 
-        default='2022'
+        default='2022_Summer22'
         )
     parser.add_argument(
         "-S", 

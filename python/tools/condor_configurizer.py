@@ -55,3 +55,35 @@ queue {njobs}"""
 
     logger.info(f"Run script via: {run_script}")    
     return
+
+
+def setup_condor_lxplus(njobs, condor_dir, dtmc):
+
+    logger.info("Setting up the submit file.")
+
+    # setup condor submit file
+    submit_script = f"""executable = ./job.sh
+arguments = $(Process)
+
+# output/error/log files
+output = logs/job_$(Cluster)_$(Process).out
+eror = logs/job_$(Cluster)_$(Process).err
+log = logs/job_$(Cluster)_$(Process).log
+
+# job requirements
+universe = vanilla
++JobFlavour = "espresso"
+RequestCPUs = 1
+
+queue {njobs}"""
+    
+    path_submit = f'{condor_dir}{dtmc}/submit.sub'
+    logger.info(f"Saving submit file in {path_submit}.")
+
+    with open(path_submit, 'w') as submit:
+        submit.write(submit_script)
+
+    run_script = f"cd {condor_dir}{dtmc}/ && condor_submit submit.sub && cd ../../../../.."
+
+    logger.info(f"Run script via: {run_script}")    
+    return

@@ -9,3 +9,8 @@ else
     source /cvmfs/sft.cern.ch/lcg/views/LCG_102rc1/x86_64-centos7-gcc11-opt/setup.sh
     echo "Done!"
 fi
+
+if [ ! -d inputs/jsonpog ]; then
+    git clone https://gitlab.cern.ch/cms-nanoAOD/jsonpog-integration.git inputs/jsonpog
+fi
+    

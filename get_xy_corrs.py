@@ -8,14 +8,14 @@ from python.correction.snapshot_maker import make_snapshot, check_snapshots
 from python.correction.histograms import make_hists
 from python.correction.correction_extractor import get_corrections
 
-# input paths
-from python.inputs.parsers import parse_arguments
-from python.inputs.paths import get_paths
-from python.inputs.binning import get_bins
-from python.inputs.logger_setup import setup_logger
-from python.inputs.labels import get_labels
+# python inputs
+from inputs.config.paths import get_paths
+from inputs.config.binning import get_bins
+from inputs.config.labels import get_labels
 
-# scripts
+# tools
+from python.tools.parsers import parse_arguments
+from python.tools.logger_setup import setup_logger
 from python.tools.das_query import get_files_from_das
 from python.tools.validate import make_validation_plots
 from python.tools.convert2json import build_combined_dict, make_correction_with_formula, validate_json
@@ -45,7 +45,8 @@ def main():
     if args.prep:
         get_files_from_das(
             path_dict['datasets'],
-            path_dict['nanoAODs']
+            path_dict['nanoAODs'],
+            args.year
         )
 
     # step 1: make flat ntuples with necessary information
@@ -102,15 +103,15 @@ def main():
     # closure
     # TODO: make flexible wrt year
     if args.validate:
-        make_validation_plots(
-            path_dict['snap_dir'],
-            path_dict['plot_dir'],
-            path_dict['corr_dir'],
-            hbins,
-            axislabels,
-            lumilabels
-        )
-        # validate_json()
+        # make_validation_plots(
+        #     path_dict['snap_dir'],
+        #     path_dict['plot_dir'],
+        #     path_dict['corr_dir'],
+        #     hbins,
+        #     axislabels,
+        #     lumilabels
+        # )
+        validate_json()
 
 if __name__=='__main__':
     main()

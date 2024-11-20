@@ -1,7 +1,7 @@
 def get_labels(year):
 
     lumilabels = {
-        '2022': {
+        '2022_Summer22': {
             'DATA': ['2022 preEE, 8.0fb^{-1} (13.6 TeV)', 0.34],
             'MC': ['2022 preEE (13.6 TeV)', 0.26],
         },

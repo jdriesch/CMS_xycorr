@@ -5,6 +5,7 @@ from tqdm import tqdm
 import os
 import correctionlib
 from glob import glob
+import json
 
 import python.tools.filters as filters
 import python.tools.condor_configurizer as condor 
@@ -26,16 +27,22 @@ def get_corrections(rdf, is_data, pu_json):
     Returns:
     RDataFrame: Updated dataframe with nominal / up / dn puWeight columns.
     """
+    # obtain name of correction
+    cset = correctionlib.CorrectionSet.from_file(pu_json)
+    cname = list(cset.keys())[0]
 
+    # define weights
     if is_data:
         rdf = rdf.Define("puWeight", "1")
         rdf = rdf.Define("puWeightUp", "1")
         rdf = rdf.Define("puWeightDn", "1")
     else:
         ROOT.gROOT.ProcessLine(
-            f'auto cs_pu = correction::CorrectionSet::from_file("{pu_json}")'
-            '->at("puweights");'
-        )  # Ensure 'puweights' name is consistent with correction file
+            f"""
+            auto cset = correction::CorrectionSet::from_file("{pu_json}");
+            auto cs_pu = cset->at("{cname}");
+            """
+        )
 
         rdf = rdf.Define("puWeight", 
                          'cs_pu->evaluate({Pileup_nTrueInt, "nominal"})')
@@ -69,38 +76,14 @@ def make_single_snapshot(
 
     rdf = ROOT.RDataFrame("Events", f)
 
+    # check golden lumi
     if isdata:
         rdf = filters.filter_lumi(rdf, g_json)
 
-    # filter dimuon events in Z region
-    rdf = rdf.Define(
-        "ind",
-        f"""ROOT::VecOps::RVec<Int_t> (get_indices(
-            nMuon,
-            &Muon_pt,
-            &Muon_eta,
-            &Muon_phi,
-            &Muon_mass,
-            &Muon_pfIsoId,
-            &Muon_tightId,
-            &Muon_charge,
-            25,
-            91.1876,
-            20,
-            4
-            ))"""
-    )
-    rdf = rdf.Define("ind0", "ind[0]")
-    rdf = rdf.Define("ind1", "ind[1]")
-    rdf = rdf.Filter("ind0 + ind1 > 0")
-    rdf = rdf.Define("pt_1", "Muon_pt[ind[0]]")
-    rdf = rdf.Define("pt_2", "Muon_pt[ind[1]]")
-    rdf = rdf.Define("eta_1", "Muon_eta[ind[0]]")
-    rdf = rdf.Define("eta_2", "Muon_eta[ind[1]]")
-    rdf = rdf.Define("phi_1", "Muon_phi[ind[0]]")
-    rdf = rdf.Define("phi_2", "Muon_phi[ind[1]]")
+    # check for dimuon Z resonance events
+    rdf = filters.filter_zmm(rdf)
 
-    rdf = get_trigger_matches(rdf)
+    # get pileup weights
     rdf = get_corrections(rdf, isdata, pu_json)
 
     # definition of x and y component of met
@@ -162,7 +145,7 @@ def make_snapshot(
 
         is_data = (dtmc == 'DATA')
 
-        quants = pileups + ['puWeight', 'puWeightUp', 'puWeightDn']
+        quants = pileups + ['puWeight', 'puWeightUp', 'puWeightDn'] + ['mass_Z']
         snap_dir_dtmc = snap_dir+'/'+dtmc + '/'
         os.makedirs(snap_dir_dtmc, exist_ok=True)
 
@@ -185,7 +168,7 @@ def make_snapshot(
             )
             do_proceed = input(
                 f"Want to proceed producing the ntuples locally "
-                "with {nthreads} threads? (y/n)"
+                f"with {nthreads} threads? (y/n)"
             )
 
             if do_proceed == 'y':
@@ -205,7 +188,7 @@ def make_snapshot(
                 logger.info("Ntuple production finished.")
             else:
                 condor.setup_job(condor_dir, dtmc, year)
-                condor.setup_condor_etp(len(arguments), condor_dir, dtmc)
+                condor.setup_condor_lxplus(len(arguments), condor_dir, dtmc)
 
     return
 
