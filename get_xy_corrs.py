@@ -61,7 +61,8 @@ def main():
             args.jobs,
             args.condor, path_dict['condor_dir'],
             datamc,
-            args.year
+            args.year,
+            path_dict['proxy_path']
         )
         check_snapshots(path_dict['snap_dir'], datamc)
 

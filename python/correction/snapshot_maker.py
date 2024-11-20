@@ -115,7 +115,7 @@ def job_wrapper(args):
 
 def make_snapshot(
     file_path, g_json, pu_json, mets, pileups, snap_dir, 
-    nthreads, condor_no, condor_dir, datamc, year
+    nthreads, condor_no, condor_dir, datamc, year, proxy_path
 ):
     '''
     Creates ntuples using input data and applies the necessary filters
