@@ -5,7 +5,7 @@ def get_labels(year):
             'DATA': ['2022 preEE, 8.0fb^{-1} (13.6 TeV)', 0.34],
             'MC': ['2022 preEE (13.6 TeV)', 0.26],
         },
-        '2022EE': {
+        '2022_Summer22EE': {
             'DATA': ['2022 postEE, 26.7fb^{-1} (13.6 TeV)', 0.36],
             'MC': ['2022 postEE (13.6 TeV)', 0.27],
         },

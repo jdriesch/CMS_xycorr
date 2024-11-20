@@ -12,11 +12,13 @@ def get_paths(args):
         'hist_dir': f"results/hists/{add_path}/",
         'condor_dir': f"results/condor/{add_path}/",
         'pu_json': f'inputs/jsonpog/POG/LUM/{args.year}/puWeights.json.gz',
-        'snap_dir': f"/ceph/jdriesch/CMS_xycorr/snapshots/{add_path}/",
+        'snap_dir': f"/eos/user/j/jovonden/CMS_xycorr/snapshots/{add_path}/",
+        'proxy_path': '/afs/cern.ch/user/j/jovonden/private/cert/x509up_u141674'
     }
 
     golden_jsons = {
-        "2022_Summer22": "/eos/user/c/cmsdqm/www/CAF/certification/Collisions22/Cert_Collisions2022_355100_362760_Golden.json"
+        "2022_Summer22": "/eos/user/c/cmsdqm/www/CAF/certification/Collisions22/Cert_Collisions2022_355100_362760_Golden.json",
+        "2022_Summer22EE": "/eos/user/c/cmsdqm/www/CAF/certification/Collisions22/Cert_Collisions2022_355100_362760_Golden.json"
     }
 
     for key in paths.keys():
