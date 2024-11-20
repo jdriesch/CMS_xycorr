@@ -76,6 +76,10 @@ def make_single_snapshot(
 
     rdf = ROOT.RDataFrame("Events", f)
 
+    logger.debug(
+        f"Processing input file {f}"
+    )
+
     # check golden lumi
     if isdata:
         rdf = filters.filter_lumi(rdf, g_json)
@@ -172,6 +176,7 @@ def make_snapshot(
             )
 
             if do_proceed == 'y':
+                # setup multiprocessing
                 pool = Pool(
                     nthreads,
                     initargs=(RLock,),
@@ -187,8 +192,16 @@ def make_snapshot(
                     pass
                 logger.info("Ntuple production finished.")
             else:
+                # setup condor job script
                 condor.setup_job(condor_dir, dtmc, year)
-                condor.setup_condor_lxplus(len(arguments), condor_dir, dtmc)
+
+                # setup condor submit file
+                condor.setup_condor_lxplus(
+                    len(arguments),
+                    condor_dir,
+                    dtmc,
+                    proxy_path
+                )
 
     return
 
@@ -201,7 +214,7 @@ def check_snapshots(snap_dir, datamc):
     snap_dir (str): Directory of snapshots.
     datamc (list): List of dataset types (e.g., 'DATA', 'MC').
     '''
-    logger.info(f"Checking snapshots in {snap_dir} for {dtmc}")
+    logger.info(f"Checking snapshots in {snap_dir} for {datamc}")
 
     zombies = []
     notrees = []
@@ -217,20 +230,31 @@ def check_snapshots(snap_dir, datamc):
                 f_tmp = ROOT.TFile.Open(f)
 
                 if f_tmp.IsZombie():
+                    logger.debug(f"File {f} is a Zombie.")
                     zombies.append(f)
 
                 else:
                     tree = f_tmp.Get("Events")
                     if not tree:
+                        logger.debug(f"File {f} does not contain tree 'Events'.")
                         notrees.append(f)
                     
-                    if tree.GetEntries() == 0:
-                        noevents.append(f)
+                    else:
+                        if tree.GetEntries() == 0:
+                            logger.debug(f"File {f} does not contain any events.")
+                            noevents.append(f)
 
             except OSError:
+                logger.debug(f"File {f} can not be opened.")
                 zombies.append(f)
 
     logger.info(
+        f"{len(zombies)} files are zombies. "
+        f"{len(notrees)} files have no tree 'Events'. "
+        f"{len(noevents)} files have zero entries."
+    )
+
+    logger.debug(
         f"The following files are zombies: {zombies}\n"
         f"The following files have no tree 'Events': {notrees}\n"
         f"The following files have zero entries: {noevents}\n"
