@@ -220,10 +220,13 @@ def check_snapshots(snap_dir, datamc):
     notrees = []
     noevents = []
 
+    all_files = 0
+
     for dtmc in datamc:
         files = f'{snap_dir}{dtmc}/*.root'
 
         files = glob(files)
+        all_files += len(files)
 
         for f in files:
             try:
@@ -248,12 +251,6 @@ def check_snapshots(snap_dir, datamc):
                 logger.debug(f"File {f} can not be opened.")
                 zombies.append(f)
 
-    logger.info(
-        f"{len(zombies)} files are zombies. "
-        f"{len(notrees)} files have no tree 'Events'. "
-        f"{len(noevents)} files have zero entries."
-    )
-
     logger.debug(
         f"The following files are zombies: {zombies}\n"
         f"The following files have no tree 'Events': {notrees}\n"
@@ -261,6 +258,14 @@ def check_snapshots(snap_dir, datamc):
     )
 
     failed_files = zombies + notrees + noevents
+    ok_files = all_files - len(failed_files)
+
+    logger.info(
+        f"{len(zombies)} files are zombies. "
+        f"{len(notrees)} files have no tree 'Events'. "
+        f"{len(noevents)} files have zero entries. "
+        f"{ok_files} files are fine."
+    )
 
     if len(failed_files)>0:
 
