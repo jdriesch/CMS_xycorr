@@ -1,0 +1,65 @@
+{
+    "2022_Summer22": {
+        "DATA":{
+            "names": [
+                "/SingleMuon/Run2022C-22Sep2023-v1/NANOAOD",
+                "/Muon/Run2022C-22Sep2023-v1/NANOAOD",
+                "/Muon/Run2022D-22Sep2023-v1/NANOAOD"
+            ]
+        },
+        "MC":{
+            "names": [
+                "/DYto2L-2Jets_MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/Run3Summer22NanoAODv12-130X_mcRun3_2022_realistic_v5-v2/NANOAODSIM"
+            ]
+ 
+        }
+    },
+    "2022_Summer22EE": {
+        "DATA": {
+            "names": [
+                "/Muon/Run2022E-22Sep2023-v1/NANOAOD",
+                "/Muon/Run2022F-PromptNanoAODv11_v1-v2/NANOAOD",
+                "/Muon/Run2022G-PromptNanoAODv11_v1-v2/NANOAOD"
+            ]
+        },
+        "MC": {
+            "names": [
+                "/DYto2L-2Jets_MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/Run3Summer22EENanoAODv12-130X_mcRun3_2022_realistic_postEE_v6-v2/NANOAODSIM"
+            ]
+        }
+    },
+    "2023_Summer23": {
+        "DATA": {
+            "names": [
+                "/Muon0/Run2023C-22Sep2023_v1-v1/NANOAOD",
+                "/Muon0/Run2023C-22Sep2023_v2-v1/NANOAOD",
+                "/Muon0/Run2023C-22Sep2023_v3-v1/NANOAOD",
+                "/Muon0/Run2023C-22Sep2023_v4-v1/NANOAOD",
+                "/Muon1/Run2023C-22Sep2023_v1-v1/NANOAOD",
+                "/Muon1/Run2023C-22Sep2023_v2-v1/NANOAOD",
+                "/Muon1/Run2023C-22Sep2023_v3-v1/NANOAOD",
+                "/Muon1/Run2023C-22Sep2023_v4-v1/NANOAOD"
+            ]
+        },
+        "MC": {
+            "names": [
+                "/DYto2L-2Jets_MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/Run3Summer23NanoAODv12-130X_mcRun3_2023_realistic_v14-v1/NANOAODSIM"
+            ]
+        }
+    },
+    "2023_Summer23BPix": {
+        "DATA": {
+        "names": [
+                "/Muon0/Run2023D-22Sep2023_v1-v1/NANOAOD",
+                "/Muon0/Run2023D-22Sep2023_v2-v1/NANOAOD",
+                "/Muon1/Run2023D-22Sep2023_v1-v1/NANOAOD",
+                "/Muon1/Run2023D-22Sep2023_v2-v1/NANOAOD"
+            ]
+        },
+        "MC": {
+            "names": [
+                "/DYto2L-2Jets_MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/Run3Summer23BPixNanoAODv12-130X_mcRun3_2023_realistic_postBPix_v2-v3/NANOAODSIM"
+            ]
+        }
+    }
+}
