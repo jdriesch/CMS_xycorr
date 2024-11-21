@@ -3,7 +3,9 @@ import os
 import python.tools.plot as plot
 import json
 
-def get_corrections(hist_dir, hbins, corr_dir, plot_dir, mets, lumilabel):
+def get_corrections(
+    hist_dir, hbins, corr_dir, plot_dir, mets, lumilabel, datamc
+):
     """
     function to get xy corrections and plot results
 
@@ -11,12 +13,13 @@ def get_corrections(hist_dir, hbins, corr_dir, plot_dir, mets, lumilabel):
     hbins (dict): Dictionary with histogram binnings.
     corr_dir (str): Directory for correction jsons.
     plot_dir (str): Directory for plots.
-    mets (list): List of mets
-    lumilabel (dict): Dictionary for lumi label position and text
+    mets (list): List of mets.
+    lumilabel (dict): Dictionary for lumi label position and text.
+    datamc (list): List of datasets to process (data / mc).
     """
 
     corr_dict = {}
-    for dtmc in ['DATA', 'MC']:
+    for dtmc in datamc:
         for met in mets:
             corr_dict[met] = {}
             for xy in ['_x', '_y']:

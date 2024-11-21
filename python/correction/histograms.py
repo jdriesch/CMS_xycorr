@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def make_hists(snap_dir, hist_dir, hbins, jobs, mets):
+def make_hists(snap_dir, hist_dir, hbins, jobs, mets, datamc):
     """
     function to make 2d histograms for xy correction
 
@@ -12,13 +12,16 @@ def make_hists(snap_dir, hist_dir, hbins, jobs, mets):
     hbins (dict): Dictionary with histogram binnings.
     jobs (int): Number of threads for parallel processing.
     mets (list): List of mets to process.
+    datamc (list): List of datasets to process (data / mc).
     """
 
-    ROOT.EnableImplicitMT(jobs)
+    if jobs > 1:
+        ROOT.EnableImplicitMT(jobs)
 
-    for dtmc in ['DATA', 'MC']:
+    for dtmc in datamc:
+        n = max(jobs, 1)
         logger.info(
-            f"Starting histogram production for {dtmc} with {jobs} threads."
+            f"Starting histogram production for {dtmc} with {n} threads."
         )
 
         is_data = (dtmc=='DATA')
@@ -31,6 +34,7 @@ def make_hists(snap_dir, hist_dir, hbins, jobs, mets):
             met_vars = [met+'_x', met+'_y']
 
             for npv in hbins['pileup']:
+
                 for variation in ["", "Up", "Dn"]:      
                     # definition of 2d histograms met_xy vs npv
                     for var in met_vars:

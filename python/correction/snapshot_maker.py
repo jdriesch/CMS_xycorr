@@ -90,6 +90,11 @@ def make_single_snapshot(
     # get pileup weights
     rdf = get_corrections(rdf, isdata, pu_json)
 
+    # ensure the datatype is consistent
+    npv = quants[0]
+    print(npv)
+    rdf = rdf.Redefine(npv, f"static_cast<int>({npv})")
+
     # definition of x and y component of met
     for met in mets:
         rdf = rdf.Define(f"{met}_x", f"{met}_pt * cos({met}_phi)")
@@ -149,13 +154,18 @@ def make_snapshot(
 
         is_data = (dtmc == 'DATA')
 
-        quants = pileups + ['puWeight', 'puWeightUp', 'puWeightDn'] + ['mass_Z']
-        snap_dir_dtmc = snap_dir+'/'+dtmc + '/'
-        os.makedirs(snap_dir_dtmc, exist_ok=True)
-
+        # output quantities for snapshots
+        quants = pileups
+        quants += ['puWeight', 'puWeightUp', 'puWeightDn']
+        quants += ['mass_Z']
         for met in mets:
             quants += [f'{met}_x', f'{met}_y']
 
+        # output directory for snapshots
+        snap_dir_dtmc = snap_dir+'/'+dtmc + '/'
+        os.makedirs(snap_dir_dtmc, exist_ok=True)
+
+        # arguments for running snapshot production
         arguments = [
             (f, g_json, pu_json, mets, snap_dir_dtmc, quants, idx, is_data)
             for idx, f in enumerate(infiles)
@@ -164,44 +174,40 @@ def make_snapshot(
         nthreads = min(nthreads, len(infiles))
 
         if condor_no >= 0:
+            # start single job
             job_wrapper(arguments[condor_no])
 
+        elif nthreads==0:
+            # setup condor job script
+            condor.setup_job(condor_dir, dtmc, year)
+
+            # setup condor submit file
+            condor.setup_condor_lxplus(
+                len(arguments),
+                condor_dir,
+                dtmc,
+                proxy_path
+            )
+
         else:
+            # setup multiprocessing
             logger.info(
-                f"The number of files to produce is: {len(arguments)}."
+                f"Producing ntuples locally with {nthreads} threads."
             )
-            do_proceed = input(
-                f"Want to proceed producing the ntuples locally "
-                f"with {nthreads} threads? (y/n)"
+            pool = Pool(
+                nthreads,
+                initargs=(RLock,),
+                initializer=tqdm.set_lock
             )
-
-            if do_proceed == 'y':
-                # setup multiprocessing
-                pool = Pool(
-                    nthreads,
-                    initargs=(RLock,),
-                    initializer=tqdm.set_lock
-                )
-                for _ in tqdm(
-                    pool.imap_unordered(job_wrapper, arguments),
-                    total=len(arguments),
-                    desc="Total progess",
-                    dynamic_ncols=True,
-                    leave=True
-                ): 
-                    pass
-                logger.info("Ntuple production finished.")
-            else:
-                # setup condor job script
-                condor.setup_job(condor_dir, dtmc, year)
-
-                # setup condor submit file
-                condor.setup_condor_lxplus(
-                    len(arguments),
-                    condor_dir,
-                    dtmc,
-                    proxy_path
-                )
+            for _ in tqdm(
+                pool.imap_unordered(job_wrapper, arguments),
+                total=len(arguments),
+                desc="Total progess",
+                dynamic_ncols=True,
+                leave=True
+            ): 
+                pass
+            logger.info("Ntuple production finished.")
 
     return
 
@@ -239,12 +245,16 @@ def check_snapshots(snap_dir, datamc):
                 else:
                     tree = f_tmp.Get("Events")
                     if not tree:
-                        logger.debug(f"File {f} does not contain tree 'Events'.")
+                        logger.debug(
+                            f"File {f} does not contain tree 'Events'."
+                        )
                         notrees.append(f)
                     
                     else:
                         if tree.GetEntries() == 0:
-                            logger.debug(f"File {f} does not contain any events.")
+                            logger.debug(
+                            f"File {f} does not contain any events."
+                        )
                             noevents.append(f)
 
             except OSError:
@@ -269,7 +279,9 @@ def check_snapshots(snap_dir, datamc):
 
     if len(failed_files)>0:
 
-        do_delete = (input("Would you like to delete them? (y/n)")=='y')
+        do_delete = (input(
+            "Would you like to delete the corrupted files? (y/n)")=='y'
+        )
 
         if do_delete:
             logger.info("Deleting selected files.")
