@@ -34,10 +34,15 @@ def parse_arguments():
         help="set if snapshot of data should be saved (for validation)"
         )
     parser.add_argument(
-        "-M",
         "--met",
         help="Comma-separated list of MET types; default is 'MET,PuppiMET'",
         default='MET,PuppiMET'
+    )
+    parser.add_argument(
+        "--pileup",
+        help="Comma-separated list of pileup types; default is 'PV_npvsGood'"\
+        " currently only one pileup type at a time is supported.",
+        default='PV_npvsGood'
     )
     parser.add_argument(
         "-V",
@@ -46,7 +51,6 @@ def parse_arguments():
         default='v0'
     )
     parser.add_argument(
-        "-D",
         "--debug",
         help="Print debugging output",
         default=False,

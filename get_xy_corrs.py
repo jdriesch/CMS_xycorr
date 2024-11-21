@@ -17,8 +17,8 @@ from inputs.config.labels import get_labels
 from python.tools.parsers import parse_arguments
 from python.tools.logger_setup import setup_logger
 from python.tools.das_query import get_files_from_das
-from python.tools.validate import make_validation_plots
-from python.tools.convert2json import make_correction_with_formula, validate_json
+from python.tools.validate import validate_json, make_validation_plots
+from python.tools.convert2json import make_correction_with_formula
 
 ROOT.gROOT.SetBatch(1)
 
@@ -30,6 +30,7 @@ def main():
     path_dict = get_paths(args)
     hbins = get_bins()
     mets = args.met.split(',')
+    pileups = args.pileup.split(',')
     datamc = args.processes.split(',')
     lumilabels, axislabels = get_labels(args.year)
 
@@ -38,7 +39,8 @@ def main():
     logger = logging.getLogger(__name__)
 
     logger.info(
-        f"Main script started for {args.year} and {args.met}."
+        "Main script started for "
+        f"{args.year}, {args.met}, and {args.processes}."
     )
 
     # Preparation: getting files from DAS
@@ -56,7 +58,7 @@ def main():
             path_dict['golden_json'], 
             path_dict['pu_json'],
             mets, 
-            list(hbins['pileup'].keys()),
+            pileups,
             path_dict['snap_dir'],
             args.jobs,
             args.condor, path_dict['condor_dir'],
@@ -99,24 +101,29 @@ def main():
         )
 
     # closure
-    # TODO: make flexible wrt year
     if args.validate:
-        # make_validation_plots(
-        #     path_dict['snap_dir'],
-        #     path_dict['plot_dir'],
-        #     path_dict['corr_dir'],
-        #     hbins,
-        #     axislabels,
-        #     lumilabels
-        # )
         validate_json(
             path_dict['snap_dir'],
             path_dict['corr_dir'],
             path_dict['hist_dir'],
             datamc,
-            args.year
+            args.year,
+            hbins,
+            mets
+        )
+        make_validation_plots(
+            path_dict['hist_dir'],
+            path_dict['plot_dir'],
+            path_dict['corr_dir'],
+            hbins,
+            axislabels,
+            lumilabels,
+            datamc,
+            args.year,
+            mets
         )
 
 if __name__=='__main__':
     main()
 
+# TODO: how to deal with stat unc in data?
