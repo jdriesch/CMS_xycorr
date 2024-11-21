@@ -73,7 +73,8 @@ def main():
             path_dict['hist_dir'],
             hbins,
             args.jobs,
-            mets
+            mets,
+            datamc
         )
 
     # step 3: fit linear functions to 2d histograms
@@ -84,7 +85,8 @@ def main():
             path_dict['corr_dir'],
             path_dict['plot_dir'],
             mets,
-            lumilabels
+            lumilabels,
+            datamc
         )
 
     # make correction lib schema v2
