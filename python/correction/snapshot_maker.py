@@ -92,7 +92,6 @@ def make_single_snapshot(
 
     # ensure the datatype is consistent
     npv = quants[0]
-    print(npv)
     rdf = rdf.Redefine(npv, f"static_cast<int>({npv})")
 
     # definition of x and y component of met
