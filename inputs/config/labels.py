@@ -9,11 +9,11 @@ def get_labels(year):
             'DATA': ['2022 postEE, 26.7fb^{-1} (13.6 TeV)', 0.36],
             'MC': ['2022 postEE (13.6 TeV)', 0.27],
         },
-        '2023': {
+        '2023_Summer23': {
             'DATA': ['2023 preBPix, 17.6fb^{-1} (13.6 TeV)', .37],
             'MC': ['2023 preBPix (13.6 TeV)', .28],
         },
-        '2023BPix': {
+        '2023_Summer23BPix': {
             'DATA': ['2023 postBPix, 9.5fb^{-1} (13.6 TeV)', .37],
             'MC': ['2023 postBPix (13.6 TeV)', .29],
         }
