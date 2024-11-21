@@ -76,6 +76,7 @@ def main():
             hbins,
             args.jobs,
             mets,
+            pileups,
             datamc
         )
 
