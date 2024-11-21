@@ -18,7 +18,7 @@ from python.tools.parsers import parse_arguments
 from python.tools.logger_setup import setup_logger
 from python.tools.das_query import get_files_from_das
 from python.tools.validate import make_validation_plots
-from python.tools.convert2json import build_combined_dict, make_correction_with_formula, validate_json
+from python.tools.convert2json import make_correction_with_formula, validate_json
 
 ROOT.gROOT.SetBatch(1)
 
@@ -90,17 +90,12 @@ def main():
         )
 
     # make correction lib schema v2
-    if args.convert != '':
-        combined_dict = build_combined_dict(
-            mets=mets,
-            epochs=args.convert.split(','),
-            corr_dir=path_dict['corr_dir'],
-            year=args.year
-        )
+    if args.convert:
         make_correction_with_formula(
-            combined_dict,
             path_dict['corr_dir'],
-            args.year
+            args.year,
+            datamc,
+            mets
         )
 
     # closure
@@ -114,7 +109,13 @@ def main():
         #     axislabels,
         #     lumilabels
         # )
-        validate_json()
+        validate_json(
+            path_dict['snap_dir'],
+            path_dict['corr_dir'],
+            path_dict['hist_dir'],
+            datamc,
+            args.year
+        )
 
 if __name__=='__main__':
     main()

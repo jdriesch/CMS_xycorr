@@ -85,9 +85,9 @@ def parse_arguments():
     )
     parser.add_argument(
         "--convert",
-        help="Comma separated list of years to combine and convert",
-        default='',
-        type=str
+        help="Convert to correctionlib format",
+        default=False,
+        action='store_true'
     )
 
     args = parser.parse_args()
