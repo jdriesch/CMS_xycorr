@@ -9,37 +9,100 @@ import python.tools.plot as plot
 
 logger = logging.getLogger(__name__)
 
-def correctXY(rdf, met, corrs):
+
+def validate_json(snap_dir, corr_dir, hist_dir, datamc, year, bin_dict, mets):
     """
-    Calculate the xy corrected MET.
+    Create histograms for closure validation.
 
     Args:
-    rdf (ROOT.RDataFrame): RDataFrame that is to be examined
-    met (str): type of MET
-    corrs (str): path of correction file
+        snap_dir (str): path to snapshots.
+        corr_dir (str): path to corrections.
+        hist_dir (str): path where histograms are saved.
+        datamc (list): DATA or MC to investigate.
+        year (str): name of the year.
+        bin_dict (dict): bining configuration.
+        mets (list): met types to validate.
     """
-    with open(corrs, 'r') as f:
-        c = json.load(f)
+    logger.info("Starting validation of correction.")
 
-    cmet = f"Corrected{met}"
+    # define variations for later
+    variations = ['', '_stat_xup', '_stat_xdn', '_stat_yup', '_stat_ydn']
 
-    for xy in c[met].keys():
+    variables = ['pt', 'phi']
 
-        rdf = rdf.Define(
-            f"{cmet}{xy}", 
-            f"{met}{xy} - ({c[met][xy]['nom']['m']} * int(PV_npvsGood)\
-             + {c[met][xy]['nom']['c']})"
-            )
+    for dtmc in datamc:
 
-    for m in [met, cmet]:
-        rdf = rdf.Define(f"{m}_pt", f"sqrt({m}_x*{m}_x + {m}_y*{m}_y)")
-        rdf = rdf.Define(f"{m}_phi", f"atan2({m}_y, {m}_x)")
-    
-    return rdf
+        # in MC also define pileup variations
+        if dtmc=='MC':
+            pu_variations = ['_pu_up', '_pu_dn']
+        else:
+            pu_variations = []
+        
+        # setup of dataframe
+        rdf = ROOT.RDataFrame("Events", f"{snap_dir}{dtmc}/file_*.root")
+
+        # loading the pileup correctionlib file
+        schemav2_json = corr_dir.replace(f'{year}/', f'schemaV2_{year}.json')
+        ROOT.gROOT.ProcessLine(
+            f'auto cs_xy = correction::CorrectionSet::from_file(\
+            "{schemav2_json}")->at("met_xy_corrections");'
+        )
+
+        # loop over different met types, calculate correction and histograms
+        for met in mets:
+
+            # obtain met pt and phi from x, y components
+            rdf = rdf.Define(f'{met}_phi', f'atan2({met}_y, {met}_x)')
+            rdf = rdf.Define(f'{met}_pt', f'sqrt({met}_y*{met}_y + {met}_x*{met}_x)')
+        
+            # correct pt and phi for different variations
+            for var in variables:
+                
+                # statistical variations for both data and mc
+                for vrt in variations+pu_variations:
+
+                    rdf = rdf.Define(
+                        f'{met}_{var}_corr{vrt}', 
+                        f'cs_xy->evaluate({{\
+                            "{var}{vrt}", "{met}", "{dtmc}", \
+                            {met}_pt, {met}_phi, static_cast<float>(PV_npvsGood)\
+                        }})'
+                    )                 
+
+        # create histograms for defined variables
+        hists = []
+        save_variations = ['_corr'+v for v in variations+pu_variations] + ['']
+        
+        for vrt in save_variations:
+            for met in mets:
+                for var in variables:
+
+                    logger.debug(f'Making histogram: {met}_{var}{vrt}')
+
+                    bins = bin_dict[var]
+                    hists.append(
+                        rdf.Histo1D(
+                            (f'{met}_{var}{vrt}', '', bins[2], bins[0], bins[1]),
+                            f'{met}_{var}{vrt}',
+                            "puWeight"
+                        ).Clone()
+                    )
+
+        # save histograms
+        rfile = f'{hist_dir}validation_{dtmc}.root'
+
+        with ROOT.TFile(rfile, 'recreate') as f:
+            for h in hists:
+                h.Write()
+
+        logger.info(f"{dtmc} histograms successfully saved at {rfile}.")
+
+    return
 
 
 def make_validation_plots(
-    snap_dir, plot_dir, corr_dir, hbins, axislabels, lumilabel
+    hist_dir, plot_dir, corr_dir, hbins, axislabels, lumilabel,
+    datamc, year, mets
 ):
     """
     Create MC vs Mc or Data vs Data plot before vs after xy correction.
@@ -54,50 +117,43 @@ def make_validation_plots(
     """
     logger.info("Starting validation")
 
-    for dtmc in ['DATA', 'MC']:
-        files = snap_dir+dtmc+'/*.root'
-        logger.debug(f"Building RDataFrame from files in {files}")
-        rdf = ROOT.RDataFrame('Events', files)
+    variations = ['', '_stat_xup', '_stat_xdn', '_stat_yup', '_stat_ydn']
 
-        for met in hbins['pt']:
-            rdf = correctXY(rdf, met, corr_dir+dtmc+'.json')
+
+    for dtmc in datamc:
+
+        # in MC also define pileup variations
+        if dtmc=='MC':
+            pu_variations = ['_pu_up', '_pu_dn']
+        else:
+            pu_variations = []
+
+        # load histograms
+        rfile = f'{hist_dir}validation_{dtmc}.root'
+        tf = ROOT.TFile(rfile, 'read')
+
+        for met in mets:
 
             for var in ['pt', 'phi']:
-
-                # uncorrected histogram
-                h = rdf.Histo1D(
-                    (
-                        var, var, 
-                        hbins[var][met][2],
-                        hbins[var][met][0],
-                        hbins[var][met][1]
-                    ),
-                    met+'_'+var
-                )
-
-                # corrected histogram
-                hc = rdf.Histo1D(
-                    (
-                        f"Corrected{var}", var,
-                        hbins[var][met][2],
-                        hbins[var][met][0],
-                        hbins[var][met][1]
-                    ),
-                    f"Corrected{met}_{var}"
-                )
-
+            
+                h = tf.Get(f"{met}_{var}")
                 logger.debug(f"Starting to plot {met}_{var} for {dtmc}.")
 
-                plot.plot_ratio(
-                    hc,
-                    h,
-                    labels=["corr", "uncorr"], 
-                    axis=[axislabels[met+'_'+var], "# Events"],
-                    outfile=f"{plot_dir}{met}_{var}_{dtmc}.pdf", 
-                    text=['','',''], 
-                    xrange=[hbins[var][met][0], hbins[var][met][1]],
-                    ratiorange = [0.8, 1.2],
-                    lumi = lumilabel[dtmc]
-                )
+                for vrt in variations+pu_variations:
+                    hc = tf.Get(f"{met}_{var}_corr{vrt}")     
+
+                    print(h, hc)           
+
+                    plot.plot_ratio(
+                        hc,
+                        h,
+                        labels=["corr", "uncorr"], 
+                        axis=[axislabels[met+'_'+var], "# Events"],
+                        outfile=f"{plot_dir}{met}_{var}_{vrt}_{dtmc}.pdf", 
+                        text=['','',''], 
+                        xrange=[hbins[var][0], hbins[var][1]],
+                        ratiorange = [0.8, 1.2],
+                        lumi = lumilabel[dtmc]
+                    )
 
     return
