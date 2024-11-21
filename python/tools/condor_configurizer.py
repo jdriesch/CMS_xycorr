@@ -37,7 +37,7 @@ log = logs/job_$(Cluster)_$(Process).log
 
 # job requirements
 universe = vanilla
-+JobFlavour = "espresso"
++JobFlavour = "microcentury"
 RequestCPUs = 1
 
 Proxy_path = {proxy_path}
@@ -52,5 +52,5 @@ queue {njobs}"""
 
     run_script = f"cd {condor_dir}{dtmc}/ && condor_submit submit.sub && cd ../../../../.."
 
-    logger.info(f"Run script via: {run_script}")    
+    logger.info(f"Run script for {njobs} via: \n{run_script}")
     return
