@@ -68,7 +68,7 @@ def parse_arguments():
         "--jobs",
         "-j",
         help='Number of jobs for parallel processing',
-        default=1,
+        default=0,
         type=int
     )
     parser.add_argument(
