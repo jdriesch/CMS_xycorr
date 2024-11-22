@@ -1,4 +1,5 @@
 import os
+import sys
 
 def get_paths(args):
 
@@ -22,6 +23,12 @@ def get_paths(args):
         "2023_Summer23": "/eos/user/c/cmsdqm/www/CAF/certification/Collisions23/Cert_Collisions2023_366442_370790_Golden.json",
         "2023_Summer23BPix": "/eos/user/c/cmsdqm/www/CAF/certification/Collisions23/Cert_Collisions2023_366442_370790_Golden.json"
     }
+
+    try:
+        assert args.year in golden_jsons.keys(), f"year must be in {list(golden_jsons.keys())}!"
+    except AssertionError as e:
+        print(e, "If you are adding a new era, please make sure to adapt the configs.")
+        sys.exit(1)
 
     for key in paths.keys():
         if 'dir' in key:
