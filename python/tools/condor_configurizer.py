@@ -1,5 +1,6 @@
 import os
 import logging
+import glob
 logger = logging.getLogger(__name__)
 
 
@@ -15,7 +16,14 @@ def setup_job(condor_dir, dtmc, year):
         f"source env.sh \n"\
         f"python get_xy_corrs.py -S --condor $1 --process {dtmc} --year {year} --debug"
 
-    os.makedirs(f'{condor_dir}{dtmc}/logs/', exist_ok=True)
+    log_dir = f'{condor_dir}{dtmc}/logs/'
+
+    # first remove directory with old logs
+    os.rmdir(log_dir)
+
+    # then create new
+    os.makedirs(f'{condor_dir}{dtmc}/logs/')
+
     with open(f'{condor_dir}{dtmc}/job.sh', 'w') as job:
         job.write(job_script)
 
