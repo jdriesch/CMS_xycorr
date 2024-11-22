@@ -117,7 +117,7 @@ def make_correction_with_formula(corr_dir, year, datamc, mets):
         for met in mets:
 
             # get correction for met type
-            params = tmp_dict[met]
+            params = tmp_dict[met]['PV_npvsGood'] #hard coded for now. Might use different pileups in the future
 
             content = []
             for exp in expressions:
