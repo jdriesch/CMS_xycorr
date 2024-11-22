@@ -14,8 +14,8 @@ The correction procedure can be roughly categorized into four steps:
 1. preparations
 2. histograms
 3. fits
-4. validation
-5. conversion to json scheme
+4. conversion to json scheme
+5. validation
 
 ## 1. Preparations
 
@@ -27,38 +27,32 @@ c) Running the ntuple production
 
 ### a) Configuration of the setup
 
-In the data directory, create a subdirectory with a unique name for the epoch of data under investigation.
-Then create a file called `datasets.json`, which contains the DAS names of the files you would like to investigate.
-Furthermore, this is the place for the json containing the pileup correction from the LUM POG. You might need to rename the name in the correctionlib file to "puweights". The golden lumi json needs to be placed in the `data/jsons` directory, with the path in `python/inputs/paths.py` adjusted correspondingly.
-In order to obtain a consistent set of program version, it is advised to source an LCG stack, e.g. one of those provided in `env.sh`.
+Running `. env.sh` ensures a consistent set of program versions is used. Furthermore it will check the availability of a VOMS proxy and copy it to a certain location in order to use it in HTCondor. It will also clone the latest version of the jsonpog correctionlib database in order to have the pileup weights available. Once the jsonpog repo is available, newer versions are not pulled automatically. Please make sure to do it yourself occasionally.
+In the `inputs/config` directory, you can add new eras. Please be sure to use a consistent nomenclature and add all necessary information, i.e. datasets, golden json, and labels.
 
 ### b) Collecting the data files
 
 Now you can run the main file using the preparation option:
 
-`python3 get_xy_corrs.py -Y 2022 --prep`
+`python3 get_xy_corrs.py -Y 2022_Summer22 --prep`
 
-This will query the files of the datasets in the `datasets.json` file and write the file lists into the file `nanoAODs.json`, which will be of use in the next step. You will need a valid VO CMS proxy in this step as well as the next one.
+This will query the files of the datasets in the `inputs/config/datasets.json` file and write the file lists to `inputs/nanoAODs/{year}.json`, which will be of use in the next step.
 
 ### c) Running the ntuple production
 
-The ntuple production takes the files in `nanoAODs.json`, filters out the data events fulfilling the golden lumi json, and applies a selection to the Z->mumu phase space to both data and simulation:
+The ntuple production takes the files in `inputs/nanoAODs/{year}.json`, filters out the data events fulfilling the golden lumi json, and applies a selection to the Z->mumu phase space to both data and simulation. The standard version will construct condor jobs and print how to start the jobs. You can also run locally by providing the option `-j 8` for 8 parallel processes:
 
-`pyhton3 get_xy_corrs.py -Y 2022 -S`
+`pyhton3 get_xy_corrs.py -Y 2022_Summer22 -S`
 
-The `snap_dir` path in `python/inputs/paths.py` determines the place to save the snapshots.
-You will be prompted whether to produce the snapshots locally or using HTCondor.
-In the first case, you can adjust the number of jobs with the additional option `-j 8` for the usage of multiprocessing with 8 threads.
-In the latter case, you might have to adjust the condor submit setup in the `python/tools/condor_configurizer.py` file. The prompt for the condor file submission will be given from the logger.
-
-Sometimes the snapshots will be corrupted, which will is checked after the production.
+The snapshots are automatically saved in your EOS userspace. You can change that in the corresponding entry in `inputs/config/paths.py`.
+Often the snapshots will be corrupted or not contain any events. Therefore, an automatic check is performed when running the same again. You will be prompted whether you wish to delete the corrupted files. The statistics for the calculation should suffice even if many files are corrupted. If all files are broken, you can check the logs in `results/condor/{version}/{year}/{dtmc}/logs/`.
 
 ## 2. Histograms
 
-The flat ntuples produced in the previous step are used to create 2d histograms of the x or y component of the missing transverse momentum against the number of reconstructed good primary vertices. These histograms are then saved to a root file determined in `python/inputs/paths.py`.
+The flat ntuples produced in the previous step are used to create 2d histograms of the x or y component of the missing transverse momentum against the number of reconstructed good primary vertices. These histograms are then saved to a root directory determined in `inputs/config/paths.py`.
 The arguments needed are:
 
-`python3 get_xy_corrs.py -Y 2022 -H -j 8`,
+`python3 get_xy_corrs.py -Y 2022_Summer22 -H -j 8`,
 
 where once again the option `-j 8` uses multithreading techniques, now not using the multiprocessing tool in python but rather the ROOT internal method, speeding up the histogramming process considerably.
 
@@ -66,30 +60,29 @@ where once again the option `-j 8` uses multithreading techniques, now not using
 
 The fits are done on the profile of the 2d histograms in direction of the momentum. In every bin of the number of primary vertices, the mean and standard deviation are calculated and then a linear fit is performed to the result:
 
-`python3 get_xy_corrs.py -Y 2022 -C`
+`python3 get_xy_corrs.py -Y 2022_Summer22 -C`
 
-The results and plots of the fits are written to the directory specified in the `python/inputs/paths.py` file. 
+The results and plots of the fits are written to the directory specified in the `inputs/config/paths.py` file. 
 
-## 4. Validation
-
-A closure test is performed by comparing the phi modulation of the missing transverse momentum component before and after correction:
-
-`python3 get_xy_corrs.py -Y 2022 --validate`
-
-The results should show an almost flat MET phi distribution after correction.
-
-## 5. Conversion to json scheme
+## 4. Conversion to json scheme
 
 The last step is the conversion to the json pog integration scheme. It can be started with the following command:
 
-`python3 get_xy_corrs.py --convert 2022,2022EE`
+`python3 get_xy_corrs.py -Y 2022_Summer22 --convert`
 
-where the epochs listed are combined into a common json lib file.
+## 5. Validation
+
+A closure test is performed by comparing the phi modulation of the missing transverse momentum component before and after correction, taking into account systematic variations:
+
+`python3 get_xy_corrs.py -Y 2022_Summer22 --validate -j 8`
+
+The results should show an almost flat MET phi distribution after correction.
 
 
 ## Further options
 
-The types of missing transverse momentum that are investigated can be controlled with the option `-M MET,PuppiMET`.
+The types of missing transverse momentum that are investigated can be controlled with the option `--met MET,PuppiMET`. They must be defined in the snapshot process.
+The type of pileup can be investigated with the option `--pileup PV_npvsGood`.
 
 A version name can be given to the currently used correction via `-V v0`.
 
