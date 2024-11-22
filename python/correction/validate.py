@@ -101,7 +101,7 @@ def validate_json(snap_dir, corr_dir, hist_dir, datamc, year, bin_dict, mets):
 
 
 def make_validation_plots(
-    hist_dir, plot_dir, corr_dir, hbins, axislabels, lumilabel,
+    hist_dir, plot_dir, corr_dir, hbins, axislabels, lumilabel, dsetlabel,
     datamc, year, mets
 ):
     """
@@ -114,17 +114,20 @@ def make_validation_plots(
     hbins (dict): Dictionary with histogram binning information.
     axislabels (dict): Improved axis labels.
     lumilabel (dict): Labels for lumi in the corresponding epoch.
+    dsetlabel (str): Label for dataset.
     """
     logger.info("Starting validation")
 
-    variations = ['', '_stat_xup', '_stat_xdn', '_stat_yup', '_stat_ydn']
-
+    variations = [
+        ['', '_stat_xup', '_stat_xdn'],
+        ['', '_stat_yup', '_stat_ydn']
+    ]
 
     for dtmc in datamc:
 
         # in MC also define pileup variations
         if dtmc=='MC':
-            pu_variations = ['_pu_up', '_pu_dn']
+            pu_variations = [['', '_pu_up', '_pu_dn']]
         else:
             pu_variations = []
 
@@ -137,19 +140,26 @@ def make_validation_plots(
             for var in ['pt', 'phi']:
             
                 h = tf.Get(f"{met}_{var}")
-                logger.debug(f"Starting to plot {met}_{var} for {dtmc}.")
+                label_uncor = ['uncorrected']
 
                 for vrt in variations+pu_variations:
-                    hc = tf.Get(f"{met}_{var}_corr{vrt}")     
 
-                    print(h, hc)           
+                    hists = []
+                    labels = label_uncor
+                    for v in vrt:
+                        hists.append(tf.Get(f"{met}_{var}_corr{v}"))
+                        labels.append(f"corrected {v.replace('_', '')}")
+
+                    outfile = f"{plot_dir}{met}_{var}{vrt[1]}_{dtmc}.pdf"
+                    outfile = outfile.replace('up_', '_').replace('__', '_')
 
                     plot.plot_ratio(
-                        hc,
                         h,
-                        labels=["corr", "uncorr"], 
+                        hists,
+                        labels=labels,
+                        dsetlabel=f'{dsetlabel} - {dtmc}',
                         axis=[axislabels[met+'_'+var], "# Events"],
-                        outfile=f"{plot_dir}{met}_{var}_{vrt}_{dtmc}.pdf", 
+                        outfile=outfile, 
                         text=['','',''], 
                         xrange=[hbins[var][0], hbins[var][1]],
                         ratiorange = [0.8, 1.2],
