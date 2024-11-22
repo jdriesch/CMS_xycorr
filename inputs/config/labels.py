@@ -2,21 +2,28 @@ def get_labels(year):
 
     lumilabels = {
         '2022_Summer22': {
-            'DATA': ['2022 preEE, 8.0fb^{-1} (13.6 TeV)', 0.34],
-            'MC': ['2022 preEE (13.6 TeV)', 0.26],
+            'DATA': '8.0fb^{-1} (13.6 TeV)',
+            'MC': '(13.6 TeV)',
         },
         '2022_Summer22EE': {
-            'DATA': ['2022 postEE, 26.7fb^{-1} (13.6 TeV)', 0.36],
-            'MC': ['2022 postEE (13.6 TeV)', 0.27],
+            'DATA': '26.7fb^{-1} (13.6 TeV)',
+            'MC': '(13.6 TeV)',
         },
         '2023_Summer23': {
-            'DATA': ['2023 preBPix, 17.6fb^{-1} (13.6 TeV)', .37],
-            'MC': ['2023 preBPix (13.6 TeV)', .28],
+            'DATA': '17.6fb^{-1} (13.6 TeV)',
+            'MC': '(13.6 TeV)',
         },
         '2023_Summer23BPix': {
-            'DATA': ['2023 postBPix, 9.5fb^{-1} (13.6 TeV)', .37],
-            'MC': ['2023 postBPix (13.6 TeV)', .29],
+            'DATA': '9.5fb^{-1} (13.6 TeV)',
+            'MC': '(13.6 TeV)',
         }
+    }
+
+    datasetlabels = {
+        '2022_Summer22': '2022 preEE',
+        '2022_Summer22EE': '2022 postEE',
+        '2023_Summer23': '2023 preBPix',
+        '2023_Summer23BPix': '2023 postBPix'
     }
 
     axislabels = {
@@ -26,4 +33,4 @@ def get_labels(year):
         f"PuppiMET_phi": "#phi (PuppiMET)"
     }
 
-    return lumilabels[year], axislabels
+    return lumilabels[year], axislabels, datasetlabels[year]

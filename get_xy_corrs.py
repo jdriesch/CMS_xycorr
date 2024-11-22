@@ -7,6 +7,8 @@ import logging
 from python.correction.snapshot_maker import make_snapshot, check_snapshots
 from python.correction.histograms import make_hists
 from python.correction.correction_extractor import get_corrections
+from python.correction.convert2json import make_correction_with_formula
+from python.correction.validate import validate_json, make_validation_plots
 
 # python inputs
 from inputs.config.paths import get_paths
@@ -17,8 +19,6 @@ from inputs.config.labels import get_labels
 from python.tools.parsers import parse_arguments
 from python.tools.logger_setup import setup_logger
 from python.tools.das_query import get_files_from_das
-from python.tools.validate import validate_json, make_validation_plots
-from python.tools.convert2json import make_correction_with_formula
 
 ROOT.gROOT.SetBatch(1)
 
@@ -32,7 +32,7 @@ def main():
     mets = args.met.split(',')
     pileups = args.pileup.split(',')
     datamc = args.processes.split(',')
-    lumilabels, axislabels = get_labels(args.year)
+    lumilabels, axislabels, dsetlabel = get_labels(args.year)
 
     # setup logger
     setup_logger('main.log', args.debug)
@@ -119,6 +119,7 @@ def main():
             hbins,
             axislabels,
             lumilabels,
+            dsetlabel,
             datamc,
             args.year,
             mets
