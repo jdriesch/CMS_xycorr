@@ -88,6 +88,7 @@ def main():
             path_dict['corr_dir'],
             path_dict['plot_dir'],
             mets,
+            pileups,
             lumilabels,
             datamc
         )

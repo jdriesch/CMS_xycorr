@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def make_hists(
-    snap_dir, hist_dir, hbins, jobs, mets, pileups, datamc
+    snap_dir, hist_dir, hbins, jobs, mets, pileup, datamc
 ):
     """
     function to make 2d histograms for xy correction
@@ -14,7 +14,7 @@ def make_hists(
     hbins (dict): Dictionary with histogram binnings.
     jobs (int): Number of threads for parallel processing.
     mets (list): List of mets to process.
-    pileups (list): List of pileup quantities to process.
+    pileup (list): List of pileup quantities to process.
     datamc (list): List of datasets to process (data / mc).
     """
 
@@ -43,7 +43,7 @@ def make_hists(
                     for var in met_vars:
                         h = rdf.Histo2D(
                             (
-                                f'{pu}_{var}_{variation}', 
+                                f'{pu}_{var}_puweight{variation}', 
                                 '', 
                                 hbins['pileup'][2], 
                                 hbins['pileup'][0], 
@@ -55,7 +55,7 @@ def make_hists(
                             pu, var,
                             "puWeight"+variation
                         )
-                        hists[f'{var}_puweight{variation}'] = h
+                        hists[f'{pu}_{var}_puweight{variation}'] = h
 
         rfile = hist_dir+dtmc+'.root'
         hfile = ROOT.TFile(rfile, "recreate")

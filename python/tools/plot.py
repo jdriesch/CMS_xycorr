@@ -11,7 +11,7 @@ def plot_2dim(
         outfile="dummy.pdf",
         xrange = [0,100],
         yrange = [-100,100],
-        lumi = ['2022, 13.6 TeV', 0.2],
+        lumi = '2022, 13.6 TeV',
         drawoption='COLZ',
         lines = False,
         results = ["", ""]
@@ -46,7 +46,8 @@ def plot_2dim(
     cmsTex.SetNDC()
     cmsTex.SetTextSize(0.04)
     cmsTex.DrawLatex(0.11,0.915,'#bf{CMS} #it{Preliminary}')
-    cmsTex.DrawLatex(0.9 - lumi[1], 0.915, lumi[0])
+    cmsTex.SetTextAlign(31)
+    cmsTex.DrawLatex(0.88, 0.915, lumi)
 
     cmsTex.SetTextSize(0.02)
     stats = ROOT.TPaveText(0.47, 0.82, 0.86, 0.88, "br ARC NDC")
