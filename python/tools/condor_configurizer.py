@@ -19,10 +19,13 @@ def setup_job(condor_dir, dtmc, year):
     log_dir = f'{condor_dir}{dtmc}/logs/'
 
     # first remove directory with old logs
-    os.rmdir(log_dir)
+    if os.path.exists(log_dir):
+        remove = input("Remove old log files? (y/n)")
+        if remove:
+            os.rmdir(log_dir)
 
     # then create new
-    os.makedirs(f'{condor_dir}{dtmc}/logs/')
+    os.makedirs(log_dir, exist_ok=True)
 
     with open(f'{condor_dir}{dtmc}/job.sh', 'w') as job:
         job.write(job_script)
