@@ -17,7 +17,7 @@ def get_paths(args):
         'condor_dir': f"results/condor/{add_path}/",
         'pu_json': f'inputs/jsonpog/POG/LUM/{args.year}/puWeights.json.gz',
         'snap_dir': f"{eos_path}/CMS_xycorr/snapshots/{add_path}/",
-        'proxy_path': f'{home_path}/x509up_u141674'
+        'proxy_path': f'{home_path}/proxy/x509up_u141674'
     }
 
     golden_jsons = {
