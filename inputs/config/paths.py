@@ -5,6 +5,9 @@ def get_paths(args):
 
     add_path = f'{args.version}/{args.year}'
 
+    home_path = os.path.expanduser("~")
+    eos_path = home_path.replace('afs/cern.ch', 'eos')
+
     paths = {
         'datasets':f'inputs/config/datasets.json',
         'nanoAODs': f'inputs/nanoAODs/{args.year}.json',
@@ -13,8 +16,8 @@ def get_paths(args):
         'hist_dir': f"results/hists/{add_path}/",
         'condor_dir': f"results/condor/{add_path}/",
         'pu_json': f'inputs/jsonpog/POG/LUM/{args.year}/puWeights.json.gz',
-        'snap_dir': f"/eos/user/j/jovonden/CMS_xycorr/snapshots/{add_path}/",
-        'proxy_path': '/afs/cern.ch/user/j/jovonden/private/cert/x509up_u141674'
+        'snap_dir': f"{eos_path}/CMS_xycorr/snapshots/{add_path}/",
+        'proxy_path': f'{home_path}/x509up_u141674'
     }
 
     golden_jsons = {
