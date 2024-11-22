@@ -7,6 +7,7 @@ def get_paths(args):
 
     home_path = os.path.expanduser("~")
     eos_path = home_path.replace('afs/cern.ch', 'eos')
+    uid = os.getuid()
 
     paths = {
         'datasets':f'inputs/config/datasets.json',
@@ -17,8 +18,19 @@ def get_paths(args):
         'condor_dir': f"results/condor/{add_path}/",
         'pu_json': f'inputs/jsonpog/POG/LUM/{args.year}/puWeights.json.gz',
         'snap_dir': f"{eos_path}/CMS_xycorr/snapshots/{add_path}/",
-        'proxy_path': f'{home_path}/proxy/x509up_u141674'
+        'proxy_path': f'{home_path}/proxy/x509up_u{uid}'
     }
+
+    if not os.path.exists(paths["proxy_path"]):
+        continue_input = input(
+            f"The proxy was not found in {paths['proxy_path']}. "
+            "Problems may occur when running the ntuple production steps. "
+            "Continue anyway? (y/n)"
+        )
+        if continue_input != 'y':
+            print("Break!")
+            sys.exit(1)
+
 
     golden_jsons = {
         "2022_Summer22": "/eos/user/c/cmsdqm/www/CAF/certification/Collisions22/Cert_Collisions2022_355100_362760_Golden.json",
