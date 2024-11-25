@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_files_from_das(datasets, nanoAODs, year):
+def get_files_from_das(datasets, nanoAODs, redirector, year):
     '''
     make file lists from DAS identifiers in datasets.json
 
@@ -24,9 +24,6 @@ def get_files_from_das(datasets, nanoAODs, year):
         with open(datasets) as f:
             dsets = json.load(f)[year]
 
-        # using general redirector
-        lib = "root://cms-xrd-global.cern.ch//"
-
         fdict = {}
 
         # looping through datasets (DATA, MC)
@@ -40,7 +37,8 @@ def get_files_from_das(datasets, nanoAODs, year):
                     f'dasgoclient -query="file dataset={d}"'
                 )
                 fdict[k] += [
-                    lib+s.replace('\n', '') for s in stream.readlines()
+                    redirector +
+                    s.replace('\n', '') for s in stream.readlines()
                 ]
 
         with open(nanoAODs, "w") as f:

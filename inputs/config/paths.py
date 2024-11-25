@@ -11,6 +11,7 @@ def get_paths(args):
 
     paths = {
         'datasets':f'inputs/config/datasets.json',
+        'redirector': 'root://cms-xrd-global.cern.ch//',
         'nanoAODs': f'inputs/nanoAODs/{args.year}.json',
         'plot_dir': f"results/plots/{add_path}/",
         'corr_dir': f"results/corrections/{add_path}/",

@@ -48,6 +48,7 @@ def main():
         get_files_from_das(
             path_dict['datasets'],
             path_dict['nanoAODs'],
+            path_dict['redirector']
             args.year
         )
 
