@@ -48,7 +48,7 @@ def main():
         get_files_from_das(
             path_dict['datasets'],
             path_dict['nanoAODs'],
-            path_dict['redirector']
+            path_dict['redirector'],
             args.year
         )
 
@@ -135,3 +135,4 @@ if __name__=='__main__':
     main()
 
 # TODO: how to deal with stat unc in data?
+# TODO: implement processing for several years at once

@@ -30,7 +30,21 @@ def get_labels(year):
         f"MET_pt": "PFMET (GeV)",
         f"MET_phi": "#phi (MET)",
         f"PuppiMET_pt": "PuppiMET (GeV)",
-        f"PuppiMET_phi": "#phi (PuppiMET)"
+        f"PuppiMET_phi": "#phi (PuppiMET)",
+        f"CaloMET_pt": "CaloMET (GeV)",
+        f"CaloMET_phi": "#phi (CaloMET)",
+        f"ChsMET_pt": "ChsMET (GeV)",
+        f"ChsMET_phi": "#phi (ChsMET)",
+        f"DeepMETResolutionTune_pt": "DeepMETResolutionTune (GeV)",
+        f"DeepMETResolutionTune_phi": "#phi (DeepMETResolutionTune)",
+        f"DeepMETResponseTune_pt": "DeepMETResponseTune (GeV)",
+        f"DeepMETResponseTune_phi": "#phi (DeepMETResponseTune)",
+        f"RawMET_pt": "RawMET (GeV)",
+        f"RawMET_phi": "#phi (RawMET)",
+        f"RawPuppiMET_pt": "RawPuppiMET (GeV)",
+        f"RawPuppiMET_phi": "#phi (RawPuppiMET)",
+        f"TkMET_pt": "TkMET (GeV)",
+        f"TkMET_phi": "#phi (TkMET)"
     }
 
     return lumilabels[year], axislabels, datasetlabels[year]
