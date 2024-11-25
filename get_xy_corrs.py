@@ -4,8 +4,8 @@ import json
 import logging
 
 # correction steps
-from python.correction.snapshot_maker import make_snapshot, check_snapshots
-from python.correction.histograms import make_hists
+from python.correction.snapshot_maker import make_snapshot
+from python.correction.histograms import check_snapshots, make_hists
 from python.correction.correction_extractor import get_corrections
 from python.correction.convert2json import make_correction_with_formula
 from python.correction.validate import validate_json, make_validation_plots
@@ -66,10 +66,14 @@ def main():
             args.year,
             path_dict['proxy_path']
         )
-        check_snapshots(path_dict['snap_dir'], datamc)
 
     # step 2: make 2d histograms met xy vs pileup
     if args.hists:
+        # first check whether files are fine
+        if not args.skip_check:
+            check_snapshots(path_dict['snap_dir'], datamc)
+
+        # then produce histograms
         make_hists(
             path_dict['snap_dir'],
             path_dict['hist_dir'],

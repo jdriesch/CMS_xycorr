@@ -1,10 +1,98 @@
 import ROOT
+import os
 import logging
+from glob import glob
 
 logger = logging.getLogger(__name__)
 
+
+def check_snapshots(snap_dir, datamc):
+    '''
+    Check whether produced snapshots are usable.
+
+    Args:
+    snap_dir (str): Directory of snapshots.
+    datamc (list): List of dataset types (e.g., 'DATA', 'MC').
+    '''
+    logger.info(f"Checking snapshots in {snap_dir} for {datamc}")
+
+    zombies = []
+    notrees = []
+    noevents = []
+
+    all_files = 0
+
+    for dtmc in datamc:
+        files = f'{snap_dir}{dtmc}/*.root'
+
+        files = glob(files)
+        all_files += len(files)
+
+        for f in files:
+            try:
+                f_tmp = ROOT.TFile.Open(f)
+
+                if f_tmp.IsZombie():
+                    logger.debug(f"File {f} is a Zombie.")
+                    zombies.append(f)
+
+                else:
+                    tree = f_tmp.Get("Events")
+                    if not tree:
+                        logger.debug(
+                            f"File {f} does not contain tree 'Events'."
+                        )
+                        notrees.append(f)
+                    
+                    else:
+                        if tree.GetEntries() == 0:
+                            logger.debug(
+                            f"File {f} does not contain any events."
+                        )
+                            noevents.append(f)
+
+            except OSError:
+                logger.debug(f"File {f} can not be opened.")
+                zombies.append(f)
+
+    logger.debug(
+        f"The following files are zombies: {zombies}\n"
+        f"The following files have no tree 'Events': {notrees}\n"
+        f"The following files have zero entries: {noevents}\n"
+    )
+
+    failed_files = zombies + notrees + noevents
+    ok_files = all_files - len(failed_files)
+
+    logger.info(
+        f"{len(zombies)} files are zombies. "
+        f"{len(notrees)} files have no tree 'Events'. "
+        f"{len(noevents)} files have zero entries. "
+        f"{ok_files} files are fine."
+    )
+
+    if len(failed_files)>0:
+
+        do_delete = (input(
+            "Would you like to delete the corrupted files? (y/n)")=='y'
+        )
+
+        if do_delete:
+            logger.info("Deleting selected files.")
+            for f in failed_files:
+                os.remove(f)
+
+        else:
+            logger.info(
+                "Not deleting corrupted files. "
+                "There may be problems in the subsequent steps."
+            )
+
+    return
+
+
 def make_hists(
-    snap_dir, hist_dir, hbins, jobs, mets, pileup, datamc
+    snap_dir, hist_dir, hbins, jobs, mets, pileups, datamc
 ):
     """
     function to make 2d histograms for xy correction
@@ -14,7 +102,7 @@ def make_hists(
     hbins (dict): Dictionary with histogram binnings.
     jobs (int): Number of threads for parallel processing.
     mets (list): List of mets to process.
-    pileup (list): List of pileup quantities to process.
+    pileups (list): List of pileup quantities to process.
     datamc (list): List of datasets to process (data / mc).
     """
 

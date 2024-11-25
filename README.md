@@ -45,7 +45,6 @@ The ntuple production takes the files in `inputs/nanoAODs/{year}.json`, filters 
 `pyhton3 get_xy_corrs.py -Y 2022_Summer22 -S`
 
 The snapshots are automatically saved in your EOS userspace. You can change that in the corresponding entry in `inputs/config/paths.py`.
-Often the snapshots will be corrupted or not contain any events. Therefore, an automatic check is performed when running the same again. You will be prompted whether you wish to delete the corrupted files. The statistics for the calculation should suffice even if many files are corrupted. If all files are broken, you can check the logs in `results/condor/{version}/{year}/{dtmc}/logs/`.
 
 ## 2. Histograms
 
@@ -55,6 +54,7 @@ The arguments needed are:
 `python3 get_xy_corrs.py -Y 2022_Summer22 -H -j 8`,
 
 where once again the option `-j 8` uses multithreading techniques, now not using the multiprocessing tool in python but rather the ROOT internal method, speeding up the histogramming process considerably.
+Before the histogram production step, the files created in the previous step are checked for corruption. You will be prompted whether you wish to delete the corrupted files. The statistics for the calculation should suffice even if many files are corrupted. If all files are broken, you can check the logs in `results/condor/{version}/{year}/{dtmc}/logs/`. If you are sure, the files are not corrupted, e.g. if you run the histogramming step a second time, you can skip the snapshot check by adding `--skip_check`.
 
 ## 3. Fits
 

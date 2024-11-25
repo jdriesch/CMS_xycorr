@@ -36,7 +36,7 @@ def parse_arguments():
     parser.add_argument(
         "--met",
         help="Comma-separated list of MET types; default is 'MET,PuppiMET'",
-        default='MET,PuppiMET'
+        default='MET,PuppiMET,CaloMET,ChsMET,DeepMETResolutionTune,DeepMETResponseTune,RawMET,RawPuppiMET,TkMET'
     )
     parser.add_argument(
         "--pileup",
@@ -90,6 +90,12 @@ def parse_arguments():
     parser.add_argument(
         "--convert",
         help="Convert to correctionlib format",
+        default=False,
+        action='store_true'
+    )
+    parser.add_argument(
+        "--skip_check",
+        help="Skip check of snapshot to speed up histogram step.",
         default=False,
         action='store_true'
     )
