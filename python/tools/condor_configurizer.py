@@ -1,4 +1,5 @@
 import os
+import shutil
 import logging
 import glob
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ def setup_job(condor_dir, dtmc, year):
     if os.path.exists(log_dir):
         remove = input("Remove old log files? (y/n)")
         if remove:
-            os.rmdir(log_dir)
+            shutil.rmtree(log_dir)
 
     # then create new
     os.makedirs(log_dir, exist_ok=True)
