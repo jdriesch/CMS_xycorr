@@ -50,9 +50,9 @@ def plot_2dim(
     cmsTex.DrawLatex(0.88, 0.915, lumi)
 
     cmsTex.SetTextSize(0.02)
-    stats = ROOT.TPaveText(0.47, 0.82, 0.86, 0.88, "br ARC NDC")
+    stats = ROOT.TPaveText(0.33, 0.82, 0.86, 0.88, "br ARC NDC")
     stats.SetFillColorAlpha(ROOT.kGray, 0.8)
-    stats.AddText(fr"Fit result: {results[0]} \times NPV + {results[1]}")
+    stats.AddText(fr"Fit result: {results[0]} ({results[2]}) \times NPV + {results[1]} ({results[3]})")
     stats.GetListOfLines().Last().SetTextColor(ROOT.kRed)
     stats.Draw("SAME")
 
@@ -61,9 +61,12 @@ def plot_2dim(
         prof.SetLineWidth(2)
         prof.SetLineColor(ROOT.kBlack)
         prof.Draw("same")
-        for line in lines:
+        color = [9, 9, 0]
+        for i, line in enumerate(lines):
             line.Draw("same")
-    
+            line.SetLineWidth(2)
+            line.SetLineColor(ROOT.kRed - color[i])
+
     path = outfile.replace(outfile.split('/')[-1], '')
     os.makedirs(path, exist_ok=True)
 
