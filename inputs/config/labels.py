@@ -44,7 +44,8 @@ def get_labels(year):
         f"RawPuppiMET_pt": "RawPuppiMET (GeV)",
         f"RawPuppiMET_phi": "#phi (RawPuppiMET)",
         f"TkMET_pt": "TkMET (GeV)",
-        f"TkMET_phi": "#phi (TkMET)"
+        f"TkMET_phi": "#phi (TkMET)",
+        "pileup": "Number of good reconstructed PVs"
     }
 
     return lumilabels[year], axislabels, datasetlabels[year]

@@ -95,6 +95,7 @@ def main():
             mets,
             pileups,
             lumilabels,
+            axislabels,
             datamc
         )
 
