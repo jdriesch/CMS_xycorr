@@ -150,7 +150,7 @@ def make_validation_plots(
                         hists.append(tf.Get(f"{met}_{var}_corr{v}"))
                         labels.append(f"corrected {v.replace('_', '')}")
 
-                    outfile = f"{plot_dir}{met}_{var}{vrt[1]}_{dtmc}.pdf"
+                    outfile = f"{plot_dir}{met}/{dtmc}_{var}{vrt[1]}.pdf"
                     outfile = outfile.replace('up_', '_').replace('__', '_')
 
                     plot.plot_ratio(
