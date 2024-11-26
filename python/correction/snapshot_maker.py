@@ -45,9 +45,9 @@ def get_corrections(rdf, is_data, pu_json):
 
         rdf = rdf.Define("puWeight", 
                          'cs_pu->evaluate({Pileup_nTrueInt, "nominal"})')
-        rdf = rdf.Define("puWeightDn", 
-                         'cs_pu->evaluate({Pileup_nTrueInt, "up"})')
         rdf = rdf.Define("puWeightUp", 
+                         'cs_pu->evaluate({Pileup_nTrueInt, "up"})')
+        rdf = rdf.Define("puWeightDn", 
                          'cs_pu->evaluate({Pileup_nTrueInt, "down"})')
 
     return rdf
