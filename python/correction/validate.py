@@ -140,15 +140,16 @@ def make_validation_plots(
             for var in ['pt', 'phi']:
             
                 h = tf.Get(f"{met}_{var}")
-                label_uncor = ['uncorrected']
 
                 for vrt in variations+pu_variations:
 
                     hists = []
-                    labels = label_uncor
+                    labels = ['uncorrected']
                     for v in vrt:
                         hists.append(tf.Get(f"{met}_{var}_corr{v}"))
                         labels.append(f"corrected {v.replace('_', '')}")
+
+                    print(labels)
 
                     outfile = f"{plot_dir}{met}/{dtmc}_{var}{vrt[1]}.pdf"
                     outfile = outfile.replace('up_', '_').replace('__', '_')
