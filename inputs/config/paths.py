@@ -47,7 +47,7 @@ def get_paths(args):
         sys.exit(1)
 
     for key in paths.keys():
-        if 'dir' in key:
+        if '_dir' in key:
             os.makedirs(paths[key], exist_ok=True)
 
     paths['golden_json'] = golden_jsons[args.year]
