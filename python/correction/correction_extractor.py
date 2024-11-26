@@ -4,7 +4,8 @@ import python.tools.plot as plot
 import json
 
 def get_corrections(
-    hist_dir, hbins, corr_dir, plot_dir, mets, pileups, lumilabel, datamc
+    hist_dir, hbins, corr_dir, plot_dir, mets, pileups, 
+    lumilabel, axislabels, datamc
 ):
     """
     function to get xy corrections and plot results
@@ -16,6 +17,7 @@ def get_corrections(
     mets (list): List of mets.
     pileups (list): List of pileups.
     lumilabel (dict): Dictionary for lumi label position and text.
+    axislabels (dict): Dictionary for axis labels.
     datamc (list): List of datasets to process (data / mc).
     """
 
@@ -61,28 +63,38 @@ def get_corrections(
                             "correlation": fitresult.Correlation(0,1)
                         }
 
-                        f1_up = ROOT.TF1("pol1up", "[0]*x+[1]", -10, 110)
-                        f1_up.SetParameter(0, f1.GetParameter(0) + f1.GetParError(0))
-                        f1_up.SetParameter(1, f1.GetParameter(1) + fitresult.Correlation(0,1) * f1.GetParError(1))
-                        f1_dn = ROOT.TF1("pol1dn", "[0]*x+[1]", -10, 110)
-                        f1_dn.SetParameter(0, f1.GetParameter(0) - f1.GetParError(0))
-                        f1_dn.SetParameter(1, f1.GetParameter(1) - fitresult.Correlation(0,1) * f1.GetParError(1))
+                        stat_unc = " sqrt( x*x*[2]*[2] + [3]*[3] + 2*[4]*x*[2]*[3] )"
 
-                        if variation == "nom":
-                            # plot fit results
-                            plot.plot_2dim(
-                                h,
-                                axis=['NPV', (met+xy+'} (GeV)').replace('_', '_{')],
-                                outfile=f"{plot_dir}{met+xy+'_'+dtmc}",
-                                xrange=[0,100],
-                                yrange=[hbins['met'][0], hbins['met'][1]],
-                                lumi=lumilabel[dtmc],
-                                lines=[f1, f1_up, f1_dn],
-                                results=[
-                                    round(corr_dict[met][pu][xy][variation]["m"],3),
-                                    round(corr_dict[met][pu][xy][variation]["c"],3)
-                                ]
-                            )
+                        f1_up = ROOT.TF1("pol1up", f"[0]*x+[1] + {stat_unc}", -10, 110)
+                        f1_up.SetParameter(0, f1.GetParameter(0))
+                        f1_up.SetParameter(1, f1.GetParameter(1))
+                        f1_up.SetParameter(2, f1.GetParError(0))
+                        f1_up.SetParameter(3, f1.GetParError(1))
+                        f1_up.SetParameter(4, fitresult.Correlation(0,1))
+                        f1_dn = ROOT.TF1("pol1dn", f"[0]*x+[1] - {stat_unc}", -10, 110)
+                        f1_dn.SetParameter(0, f1.GetParameter(0))
+                        f1_dn.SetParameter(1, f1.GetParameter(1))
+                        f1_dn.SetParameter(2, f1.GetParError(0))
+                        f1_dn.SetParameter(3, f1.GetParError(1))
+                        f1_dn.SetParameter(4, fitresult.Correlation(0,1))
+
+                        # if variation == "nom":
+                        # plot fit results
+                        plot.plot_2dim(
+                            h,
+                            axis=[axislabels['pileup'], (met+xy+'} (GeV)').replace('_', '_{')],
+                            outfile=f"{plot_dir}{met}/{dtmc+xy}_{variation}",
+                            xrange=[0,100],
+                            yrange=[hbins['met'][0], hbins['met'][1]],
+                            lumi=lumilabel[dtmc],
+                            lines=[f1_up, f1_dn, f1],
+                            results=[
+                                round(corr_dict[met][pu][xy][variation]["m"],3),
+                                round(corr_dict[met][pu][xy][variation]["c"],3),
+                                round(corr_dict[met][pu][xy][variation]["m_stat"],3),
+                                round(corr_dict[met][pu][xy][variation]["c_stat"],3),
+                            ]
+                        )
 
         with open(f"{corr_dir+dtmc}.json", "w") as f:
             json.dump(corr_dict, f, indent=4)
