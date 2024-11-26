@@ -151,8 +151,10 @@ def make_validation_plots(
 
                     print(labels)
 
-                    outfile = f"{plot_dir}{met}/{dtmc}_{var}{vrt[1]}.pdf"
-                    outfile = outfile.replace('up_', '_').replace('__', '_')
+                    basedir = f"{plot_dir}{met}/"
+                    vrtname = vrt[1].replace('up', '').replace('_', '')
+
+                    outfile = f"{basedir}{dtmc}_{var}_{vrtname}.pdf"
 
                     plot.plot_ratio(
                         h,
