@@ -27,7 +27,7 @@ def get_labels(year):
     }
 
     axislabels = {
-        f"MET_pt": "PFMET (GeV)",
+        f"MET_pt": "MET (GeV)",
         f"MET_phi": "#phi (MET)",
         f"PuppiMET_pt": "PuppiMET (GeV)",
         f"PuppiMET_phi": "#phi (PuppiMET)",
